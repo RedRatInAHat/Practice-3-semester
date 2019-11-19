@@ -22,7 +22,7 @@ class PointsObject:
 
         If user didn't send rgb, it is made grey by default
 
-        Attributes:
+        Args:
             xyz (numpy.array): an array for xyz coordinates of the object to add
             rgb(numpy.array): an array for rgb value (.0, 1.0) of the points of the object to add
         """
@@ -40,7 +40,7 @@ class PointsObject:
 
         If user didn't send rgb, it is made grey by default
 
-        Attributes:
+        Args:
             xyz (numpy.array): an array for xyz coordinates of the object
             rgb(numpy.array): an array for rgb value (.0, 1.0) of the points of the object
         """
