@@ -16,9 +16,8 @@ def download_ply(path):
 
 
 if __name__ == "__main__":
-    from points_object import PointsObject
-
-    points, color = download_ply("models/fragment.ply")
-    cube = PointsObject()
-    cube.set_points(points, color)
-    print(cube.get_points())
+    points, color = download_ply("models/violet thor.ply")
+    pcd = open3d.geometry.PointCloud()
+    pcd.points = open3d.utility.Vector3dVector(points)
+    pcd.colors = open3d.utility.Vector3dVector(color)
+    open3d.visualization.draw_geometries([pcd])
