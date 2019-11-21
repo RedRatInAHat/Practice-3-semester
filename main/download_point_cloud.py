@@ -14,6 +14,22 @@ def download_ply(path):
     pcd = open3d.io.read_point_cloud(path)
     return np.asarray(pcd.points), np.asarray(pcd.colors)
 
+def download_to_object(path):
+    """Downloading .ply file and making an instance of PointsObject
+
+    Args:
+        path (str): Path to the .ply file
+    Returns:
+        object (instance of PointsObject)
+
+    """
+    from points_object import PointsObject
+
+    pcd = open3d.io.read_point_cloud(path)
+    object = PointsObject()
+    object.set_points(np.asarray(pcd.points), np.asarray(pcd.colors))
+    return object
+
 
 if __name__ == "__main__":
     points, color = download_ply("models/violet thor.ply")

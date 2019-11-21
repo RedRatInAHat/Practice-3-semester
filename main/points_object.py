@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 
 class PointsObject:
@@ -73,9 +74,42 @@ class PointsObject:
     def moving(self, moving):
         self.__moving = moving
 
+    def rotate(self, axis, angle):
+        """Rotating points of the object
+
+        Args:
+            axis (numpy.array): axis according to which rotation must be done
+            angle (numpy.array): angle on which rotation must be done
+        """
+        axis = axis / np.sqrt(np.dot(axis, axis))
+        a = np.cos(angle / 2.)
+        b, c, d = -axis * np.sin(angle / 2.)
+        R = np.array([[a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c), 0],
+                      [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b), 0],
+                      [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - b * b - c * c, 0],
+                      [0, 0, 0, 1]])
+
+        A = np.zeros((self.__xyz.shape[0], self.__xyz.shape[1] + 1))
+        A[:, :-1] = self.__xyz[:, :]
+
+        A = np.dot(R, A.T).T
+
+        self.__xyz = A[:, :-1]
+
+    def shift(self, distance):
+        """Linear moving of points of the object
+
+        Arguments:
+            distance (numpy.array): distance in xyz format according to which points must be moved
+        """
+        for i in range(self.__xyz.shape[0]):
+            self.__xyz[i] = self.__xyz[i] + distance
+
 
 if __name__ == "__main__":
     test = PointsObject()
     test.set_points(np.zeros([2, 3]))
-    test.add_points(np.zeros([1, 3]), np.zeros([2, 3]))
+    test.shift(np.array([2, 3, 1]))
     print("here: ", test.get_points())
+    test.rotate([0, 0, 1], math.pi)
+    print(test.get_points())
