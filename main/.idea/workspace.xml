@@ -31,7 +31,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.visualization">
+  <component name="RunManager" selected="Python.main">
     <configuration name="download_point_cloud" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -118,9 +118,9 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.visualization" />
         <item itemvalue="Python.main" />
         <item itemvalue="Python.points_object" />
+        <item itemvalue="Python.visualization" />
         <item itemvalue="Python.download_point_cloud" />
       </list>
     </recent_temporary>

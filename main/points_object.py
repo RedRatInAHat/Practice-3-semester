@@ -6,44 +6,58 @@ class PointsObject:
     """Point clouds type objects
 
     Attributes:
-        xyz (numpy.array): an array for xyz coordinates of the object
-        rgb (numpy.array): an array for rgb value (.0, 1.0) of the points of the object
+        xyz (numpy.array): an array for active xyz coordinates of the object
+        rgb (numpy.array): an array for active rgb value (.0, 1.0) of the points of the object
         visible (bool): shows should the object be using or not
         moving (bool): shows should the object move
+        active_points (numpy.array): shows which points will be active
     """
 
     def __init__(self):
         self.__xyz = np.empty([0, 3])
         self.__rgb = np.empty([0, 3])
         self.__visible = True
-        self._moving = False
+        self.__moving = False
+        self.__active_points = np.empty([0])
 
-    def add_points(self, xyz, rgb=None):
+    def add_points(self, xyz, rgb=None, number=None):
         """Adding points to xyz and rgb
 
-        If user didn't send rgb, it is made grey by default
+        If user didn't send rgb, it is made grey by default. If user doesn't point the number of active points they all
+        are active.
 
         Args:
             xyz (numpy.array): an array for xyz coordinates of the object to add
-            rgb(numpy.array): an array for rgb value (.0, 1.0) of the points of the object to add
+            rgb (numpy.array): an array for rgb value (.0, 1.0) of the points of the object to add
+            number (int): number of active points
         """
         try:
             self.__xyz = np.append(self.__xyz, xyz, axis=0)
+
             if rgb is None or not rgb.shape[0] == xyz.shape[0]:
                 rgb = np.empty([xyz.shape[0], 3])
                 rgb.fill(0.5)
             self.__rgb = np.append(self.__rgb, rgb, axis=0)
+
+            if number is not None and number > xyz.shape[0]:
+                print("Number of active points is more, than number of points. Do something with it.")
+                number = None
+
+            self.__active_points = np.append(self.__active_points, self.choose_random_active(xyz.shape[0], number),
+                                             axis=0)
+
         except ValueError as e:
             print("Error in PointObject.add_points:", e)
 
-    def set_points(self, xyz, rgb=None):
+    def set_points(self, xyz, rgb=None, number=None):
         """Setting xyz and rgb points
 
         If user didn't send rgb, it is made grey by default
 
         Args:
             xyz (numpy.array): an array for xyz coordinates of the object
-            rgb(numpy.array): an array for rgb value (.0, 1.0) of the points of the object
+            rgb (numpy.array): an array for rgb value (.0, 1.0) of the points of the object
+            number (int): number of active points
         """
         try:
             self.__xyz = xyz
@@ -54,9 +68,21 @@ class PointsObject:
         except ValueError as e:
             print("Error in PointObject.set_points:", e)
 
+        self.__active_points = self.choose_random_active(xyz.shape[0], number)
+
     def get_points(self):
-        """Returns coordinates and colors of object's points"""
-        return self.__xyz, self.__rgb
+        """Returns coordinates and colors of active object's points"""
+        xyz = np.empty([self.number_of_active_points(), 3])
+        rgb = np.empty([self.number_of_active_points(), 3])
+        counter = 0
+
+        for i in range(self.number_of_all_points()):
+            if self.__active_points[i]:
+                xyz[counter] = self.__xyz[i]
+                rgb[counter] = self.__rgb[i]
+                counter += 1
+
+        return xyz, rgb
 
     @property
     def visible(self):
@@ -105,11 +131,69 @@ class PointsObject:
         for i in range(self.__xyz.shape[0]):
             self.__xyz[i] = self.__xyz[i] + distance
 
+    def scale(self, S):
+        """Scaling of point cloud
+
+        Arguments:
+            S (float): scaling coefficient
+        """
+
+        matrix = np.array([[S, 0, 0, 0],
+                           [0, S, 0, 0],
+                           [0, 0, S, 0],
+                           [0, 0, 0, 1]])
+
+        A = np.zeros((self.__xyz.shape[0], self.__xyz.shape[1] + 1))
+        A[:, :-1] = self.__xyz[:, :]
+
+        A = np.dot(matrix, A.T).T
+
+        self.__xyz = A[:, :-1]
+
+    def number_of_active_points(self):
+        counter = 0
+        for element in self.__active_points:
+            if element:
+                counter += 1
+        return counter
+
+    def number_of_all_points(self):
+        return self.__xyz.shape[0]
+
+    def choose_random_active(self, array_len, number):
+        """Choosing the points, which will be static
+
+        Arguments:
+            array_len (int): length of array for which random indexes will be chosen
+            number (int): number of points which will be chosen as active
+
+        Returns:
+            new_active (np.array): array of indicators which show is an element active or not
+        """
+        new_active = np.empty(array_len)
+        if number is None:
+            new_active.fill(True)
+        else:
+            true_active = np.empty([number])
+            true_active.fill(True)
+            false_active = np.empty([array_len - number])
+            false_active.fill(False)
+            new_active = np.append(true_active, false_active)
+            np.random.shuffle(new_active)
+        return new_active
+
+    def clear(self):
+        """Erases points"""
+        self.__xyz = np.empty([0, 3])
+        self.__rgb = np.empty([0, 3])
+        self.__active_points = np.empty([0])
+
+    def set_number_of_active_points(self, number):
+        self.__active_points = self.choose_random_active(self.number_of_all_points(), number)
 
 if __name__ == "__main__":
     test = PointsObject()
-    test.set_points(np.zeros([2, 3]))
-    test.shift(np.array([2, 3, 1]))
-    print("here: ", test.get_points())
-    test.rotate([0, 0, 1], math.pi)
+    test.add_points(np.asarray([[0, 1, 2], [3, 5, 9], [6, 6, 6], [8, 4, 3]]))
+    print(test.get_points())
+    test.set_number_of_active_points(2)
     print(test.get_points())
