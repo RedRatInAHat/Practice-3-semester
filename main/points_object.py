@@ -191,6 +191,9 @@ class PointsObject:
     def set_number_of_active_points(self, number):
         self.__active_points = self.choose_random_active(self.number_of_all_points(), number)
 
+    def return_n_last_points(self, number):
+        return self.__xyz[-(number+1):-1], self.__rgb[-(number+1):-1]
+
 if __name__ == "__main__":
     test = PointsObject()
     test.add_points(np.asarray([[0, 1, 2], [3, 5, 9], [6, 6, 6], [8, 4, 3]]))

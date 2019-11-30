@@ -14,11 +14,13 @@ def download_ply(path):
     pcd = open3d.io.read_point_cloud(path)
     return np.asarray(pcd.points), np.asarray(pcd.colors)
 
-def download_to_object(path):
+
+def download_to_object(path, number_of_points=None):
     """Downloading .ply file and making an instance of PointsObject
 
     Args:
         path (str): Path to the .ply file
+        number_of_points (int): number of active points which will be added to object
     Returns:
         object (instance of PointsObject)
 
@@ -27,7 +29,7 @@ def download_to_object(path):
 
     pcd = open3d.io.read_point_cloud(path)
     object = PointsObject()
-    object.set_points(np.asarray(pcd.points), np.asarray(pcd.colors))
+    object.set_points(np.asarray(pcd.points), np.asarray(pcd.colors), number=number_of_points)
     return object
 
 
