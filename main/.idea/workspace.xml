@@ -31,7 +31,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.NIR 3 semester">
+  <component name="RunManager" selected="Python.points_object">
     <configuration name="Main body" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -139,11 +139,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.points_object" />
         <item itemvalue="Python.NIR 3 semester" />
         <item itemvalue="Python.vrep_functions" />
         <item itemvalue="Python.Main body" />
         <item itemvalue="Python.main" />
-        <item itemvalue="Python.points_object" />
       </list>
     </recent_temporary>
   </component>

@@ -49,7 +49,11 @@ def try_frame_difference():
 
         mask = mask*255
 
-        cv2.imshow("image", mask);
+        all_masks = np.zeros_like(mask[0])
+        for i in range(len(mask)):
+            all_masks += mask[i]
+
+        cv2.imshow("image", all_masks);
         cv2.waitKey();
 
     vrep_functions.vrep_stop_sim(client_id)

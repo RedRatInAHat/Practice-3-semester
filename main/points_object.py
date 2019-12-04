@@ -194,9 +194,52 @@ class PointsObject:
     def return_n_last_points(self, number):
         return self.__xyz[-(number+1):-1], self.__rgb[-(number+1):-1]
 
+    def save_all_points(self, path, name):
+        """Saving all points cloud's points in .pcd format
+
+        Arguments:
+            path (string): path to the file. Folders have to exist
+            name (string): name of the file
+        """
+        import open3d as o3d
+
+        full_path = path + "/" + name + ".pcd"
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(self.__xyz)
+        pcd.colors = o3d.utility.Vector3dVector(self.__rgb)
+        o3d.io.write_point_cloud(full_path, pcd)
+
+    def save_active_points(self, path, name):
+        """Saving only active points cloud's points in .pcd format
+
+        Arguments:
+            path (string): path to the file. Folders have to exist
+            name (string): name of the file
+        """
+        import open3d as o3d
+
+        xyz = np.empty([self.number_of_active_points(), 3])
+        rgb = np.empty([self.number_of_active_points(), 3])
+        counter = 0
+
+        for i in range(self.number_of_all_points()):
+            if self.__active_points[i]:
+                xyz[counter] = self.__xyz[i]
+                rgb[counter] = self.__rgb[i]
+                counter += 1
+
+        full_path = path + "/" + name + ".pcd"
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(xyz)
+        pcd.colors = o3d.utility.Vector3dVector(rgb)
+        o3d.io.write_point_cloud(full_path, pcd)
+
+
 if __name__ == "__main__":
     test = PointsObject()
     test.add_points(np.asarray([[0, 1, 2], [3, 5, 9], [6, 6, 6], [8, 4, 3]]))
     print(test.get_points())
     test.set_number_of_active_points(2)
     print(test.get_points())
+    test.save_all_points("PCDs", "test")
+    test.save_active_points("PCDs", "test1")
