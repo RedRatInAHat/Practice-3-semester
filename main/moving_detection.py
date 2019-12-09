@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import random
 from collections import deque
 from dataclasses import dataclass
 
@@ -119,18 +120,124 @@ class FrameDifference:
 
 class ViBЕ:
 
-    def __init__(self, rgb_im, number_of_samples=20, threshold_lambda=2, threshold_r=20, time_factor=16):
+    def __init__(self, rgb_im, number_of_samples=20, threshold_lambda=2, threshold_r=20, time_factor=16,
+                 neighbourhood_area=4):
         self.__current_rgb = rgb_im
         self.__previous_rgb = np.empty_like(rgb_im)
-        self.__background = np.empty(rgb_im.shape[0], rgb_im.shape[1], number_of_samples)
+        self.__background = np.empty([rgb_im.shape[0], rgb_im.shape[1], number_of_samples, 3])
         self.__mask = np.empty_like(rgb_im)
+        self.__potential_neighbours = np.arange(-neighbourhood_area, neighbourhood_area + 1)
+        self.__potential_neighbours = self.__potential_neighbours[self.__potential_neighbours != 0]
+        self.__number_of_samples = number_of_samples
+        self.__threshold_r = threshold_r
+        self.__threshold_lambda = threshold_lambda
+        self.__time_factor = time_factor
         self.initial_background()
+        self.set_mask()
+        print(self.__mask)
 
     def initial_background(self):
+        resolution_i = self.__current_rgb.shape[0]
+        resolution_j = self.__current_rgb.shape[1]
         self.__previous_rgb = np.copy(self.__current_rgb)
         for i in range(self.__current_rgb.shape[0]):
             for j in range(self.__previous_rgb.shape[1]):
-                pass
+                self.__background[i, j, 0] = self.__current_rgb[i, j]
+                for k in range(1, self.__number_of_samples):
+                    rand_i = self.get_random_neighbour(i, resolution_i, self.__potential_neighbours)
+                    rand_j = self.get_random_neighbour(j, resolution_j, self.__potential_neighbours)
+                    self.__background[i, j, k] = self.__current_rgb[rand_i, rand_j]
 
-    def get_random_neighbour(self, i, j):
-        pass
+    def get_random_neighbour(self, index, resolution, area):
+        neighbour_index = index + np.random.choice(area)
+        while neighbour_index < 0 or neighbour_index >= resolution:
+            neighbour_index = index + np.random.choice(area)
+        return neighbour_index
+
+    def set_mask(self):
+        for i in range(self.__current_rgb.shape[0]):
+            for j in range(self.__current_rgb.shape[1]):
+                self.set_pixel(i, j)
+
+    def set_pixel(self, i, j):
+
+        if self.in_background(i, j):
+            self.__mask[i, j] = 0
+
+            if self.time_factor_chance(self.__time_factor):
+                self.update_sample(i, j, i, j)
+
+            if self.time_factor_chance(self.__time_factor):
+                neighbour_i = self.get_random_neighbour(i, self.__current_rgb.shape[0], self.__potential_neighbours)
+                neighbour_j = self.get_random_neighbour(j, self.__current_rgb.shape[1], self.__potential_neighbours)
+                self.update_sample(neighbour_i, neighbour_j, i, j)
+            elif self.time_factor_chance(self.__time_factor):
+                area_radius = 2
+                area = np.arange(-area_radius, area_radius + 1)
+                area = area[area != 0]
+
+                neighbour_i = self.get_random_neighbour(i, self.__current_rgb.shape[0], area)
+                neighbour_j = self.get_random_neighbour(j, self.__current_rgb.shape[1], area)
+
+                self.update_sample(neighbour_i, neighbour_j, i, j)
+
+            return 0
+        else:
+            self.__mask[i, j] = 1
+            if self.time_factor_chance(self.__time_factor) and \
+                    self.color_distance(self.__current_rgb[i, j], self.__previous_rgb[i, j]) < self.__threshold_r and \
+                    self.no_foreground_neighbours(i, j):
+                self.update_sample(i, j, i, j)
+            return 1
+
+        # TODO
+
+    def no_foreground_neighbours(self, i, j):
+        if not i - 1 < 0 and not self.__mask[i - 1, j] == 1:
+            return True
+        if not i + 1 >= self.__current_rgb.shape[0] and not self.__mask[i + 1, j] == 1:
+            return True
+        if not j - 1 < 0 and not self.__mask[i, j - 1] == 1:
+            return True
+        if not j + 1 >= self.__current_rgb.shape[1] and not self.__mask[i, j+1] == 1:
+            return True
+        return False
+
+    def update_sample(self, goal_i, goal_j, set_i, set_j):
+        self.__background[goal_i, goal_j, random.randrange(self.__number_of_samples)] = \
+            self.__current_rgb[set_i, set_j]
+
+    def time_factor_chance(self, chance_factor):
+        return np.random.choice([True, False], 1, p=[1 / chance_factor, 1 - 1 / chance_factor])
+
+    def in_background(self, i, j):
+        """Checking for belonging to background
+
+        Arguments:
+            i, j (int): indexes of current pixel
+
+        Return:
+            bool: true if belongs to background, else false
+        """
+
+        close_pixels = 0
+
+        for k in range(self.__number_of_samples):
+
+            if self.color_distance(self.__current_rgb[i, j], self.__background[i, j, k]) < self.__threshold_r:
+                close_pixels += 1
+
+            if close_pixels >= self.__threshold_lambda:
+                return True
+
+        return False
+
+    def color_distance(self, current_pixel, sample_pixel):
+        """Calculation of distance between colors in rgb space
+
+        Arguments:
+            current_pixel(np.array): RGB of first pixel
+            sample_pixel(np.array): RGB of second pixel
+        """
+        difference = current_pixel - sample_pixel
+        return np.sum(difference ** 2)

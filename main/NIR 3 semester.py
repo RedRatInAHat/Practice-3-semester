@@ -1,6 +1,7 @@
 import vrep_functions
 from points_object import PointsObject
 from moving_detection import FrameDifference
+from moving_detection import ViBЕ
 import visualization
 import numpy as np
 import time
@@ -58,6 +59,13 @@ def try_frame_difference():
 
     vrep_functions.vrep_stop_sim(client_id)
 
+def try_ViBE():
+    temp_array = np.random.rand(10, 10, 3)
+    start = time.time()
+    vibe_ = ViBЕ(temp_array)
+    print(time.time() - start)
+
 if __name__ == "__main__":
     # try_vrep_connection()
-    try_frame_difference()
+    # try_frame_difference()
+    try_ViBE()

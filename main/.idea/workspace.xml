@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="94cac3dd-8e37-42ba-af40-14e1add81bee" name="Default Changelist" comment="" />
-    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,22 +15,15 @@
     </option>
   </component>
   <component name="ProjectId" id="1Tmr2Fj7neOZQlZF0H9nEGSrCIF" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
   <component name="PropertiesComponent">
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunDashboard">
-    <option name="ruleStates">
-      <list>
-        <RuleState>
-          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
-        </RuleState>
-        <RuleState>
-          <option name="name" value="StatusDashboardGroupingRule" />
-        </RuleState>
-      </list>
-    </option>
-  </component>
-  <component name="RunManager" selected="Python.points_object">
+  <component name="RunManager" selected="Python.NIR 3 semester">
     <configuration name="Main body" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -139,13 +131,25 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.points_object" />
         <item itemvalue="Python.NIR 3 semester" />
+        <item itemvalue="Python.points_object" />
         <item itemvalue="Python.vrep_functions" />
         <item itemvalue="Python.Main body" />
         <item itemvalue="Python.main" />
       </list>
     </recent_temporary>
+  </component>
+  <component name="ServiceViewManager">
+    <option name="viewStates">
+      <list>
+        <serviceView>
+          <treeState>
+            <expand />
+            <select />
+          </treeState>
+        </serviceView>
+      </list>
+    </option>
   </component>
   <component name="SvnConfiguration">
     <configuration />
@@ -159,5 +163,43 @@
       <updated>1574075902651</updated>
     </task>
     <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state width="1898" height="341" key="GridCell.Tab.0.bottom" timestamp="1575904434411">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state width="1898" height="341" key="GridCell.Tab.0.center" timestamp="1575904434410">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434410" />
+    <state width="1898" height="341" key="GridCell.Tab.0.left" timestamp="1575904434410">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434410" />
+    <state width="1898" height="341" key="GridCell.Tab.0.right" timestamp="1575904434411">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1575904434411">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1575904434411">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1575904434411">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1575904434411">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1575890292725">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1575890292725" />
   </component>
 </project>
