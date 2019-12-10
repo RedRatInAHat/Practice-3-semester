@@ -90,8 +90,8 @@ class FrameDifference:
         done = np.zeros_like(seeds)
 
         while not np.sum(seeds) == 0:
-            ind_i = math.floor(np.argmax(seeds) / 640)
-            ind_j = np.argmax(seeds) - ind_i * 640
+            ind_i = math.floor(np.argmax(seeds) / self.__current_rgb.shape[1])
+            ind_j = np.argmax(seeds) - ind_i * self.__current_rgb.shape[1]
             mask = np.zeros_like(self.__current_depth)
 
             q = deque()
@@ -125,7 +125,7 @@ class ViBЕ:
         self.__current_rgb = rgb_im
         self.__previous_rgb = np.empty_like(rgb_im)
         self.__background = np.empty([rgb_im.shape[0], rgb_im.shape[1], number_of_samples, 3])
-        self.__mask = np.empty_like(rgb_im)
+        self.__mask = np.empty([rgb_im.shape[0], rgb_im.shape[1]])
         self.__potential_neighbours = np.arange(-neighbourhood_area, neighbourhood_area + 1)
         self.__potential_neighbours = self.__potential_neighbours[self.__potential_neighbours != 0]
         self.__number_of_samples = number_of_samples
@@ -134,7 +134,6 @@ class ViBЕ:
         self.__time_factor = time_factor
         self.initial_background()
         self.set_mask()
-        print(self.__mask)
 
     def initial_background(self):
         resolution_i = self.__current_rgb.shape[0]
@@ -144,15 +143,9 @@ class ViBЕ:
             for j in range(self.__previous_rgb.shape[1]):
                 self.__background[i, j, 0] = self.__current_rgb[i, j]
                 for k in range(1, self.__number_of_samples):
-                    rand_i = self.get_random_neighbour(i, resolution_i, self.__potential_neighbours)
-                    rand_j = self.get_random_neighbour(j, resolution_j, self.__potential_neighbours)
+                    rand_i = get_random_neighbour(i, resolution_i, self.__potential_neighbours)
+                    rand_j = get_random_neighbour(j, resolution_j, self.__potential_neighbours)
                     self.__background[i, j, k] = self.__current_rgb[rand_i, rand_j]
-
-    def get_random_neighbour(self, index, resolution, area):
-        neighbour_index = index + np.random.choice(area)
-        while neighbour_index < 0 or neighbour_index >= resolution:
-            neighbour_index = index + np.random.choice(area)
-        return neighbour_index
 
     def set_mask(self):
         for i in range(self.__current_rgb.shape[0]):
@@ -168,16 +161,16 @@ class ViBЕ:
                 self.update_sample(i, j, i, j)
 
             if self.time_factor_chance(self.__time_factor):
-                neighbour_i = self.get_random_neighbour(i, self.__current_rgb.shape[0], self.__potential_neighbours)
-                neighbour_j = self.get_random_neighbour(j, self.__current_rgb.shape[1], self.__potential_neighbours)
+                neighbour_i = get_random_neighbour(i, self.__current_rgb.shape[0], self.__potential_neighbours)
+                neighbour_j = get_random_neighbour(j, self.__current_rgb.shape[1], self.__potential_neighbours)
                 self.update_sample(neighbour_i, neighbour_j, i, j)
             elif self.time_factor_chance(self.__time_factor):
                 area_radius = 2
                 area = np.arange(-area_radius, area_radius + 1)
                 area = area[area != 0]
 
-                neighbour_i = self.get_random_neighbour(i, self.__current_rgb.shape[0], area)
-                neighbour_j = self.get_random_neighbour(j, self.__current_rgb.shape[1], area)
+                neighbour_i = get_random_neighbour(i, self.__current_rgb.shape[0], area)
+                neighbour_j = get_random_neighbour(j, self.__current_rgb.shape[1], area)
 
                 self.update_sample(neighbour_i, neighbour_j, i, j)
 
@@ -185,12 +178,10 @@ class ViBЕ:
         else:
             self.__mask[i, j] = 1
             if self.time_factor_chance(self.__time_factor) and \
-                    self.color_distance(self.__current_rgb[i, j], self.__previous_rgb[i, j]) < self.__threshold_r and \
+                    color_distance(self.__current_rgb[i, j], self.__previous_rgb[i, j]) < self.__threshold_r and \
                     self.no_foreground_neighbours(i, j):
                 self.update_sample(i, j, i, j)
             return 1
-
-        # TODO
 
     def no_foreground_neighbours(self, i, j):
         if not i - 1 < 0 and not self.__mask[i - 1, j] == 1:
@@ -199,7 +190,7 @@ class ViBЕ:
             return True
         if not j - 1 < 0 and not self.__mask[i, j - 1] == 1:
             return True
-        if not j + 1 >= self.__current_rgb.shape[1] and not self.__mask[i, j+1] == 1:
+        if not j + 1 >= self.__current_rgb.shape[1] and not self.__mask[i, j + 1] == 1:
             return True
         return False
 
@@ -224,7 +215,7 @@ class ViBЕ:
 
         for k in range(self.__number_of_samples):
 
-            if self.color_distance(self.__current_rgb[i, j], self.__background[i, j, k]) < self.__threshold_r:
+            if color_distance(self.__current_rgb[i, j], self.__background[i, j, k]) < self.__threshold_r:
                 close_pixels += 1
 
             if close_pixels >= self.__threshold_lambda:
@@ -232,12 +223,33 @@ class ViBЕ:
 
         return False
 
-    def color_distance(self, current_pixel, sample_pixel):
-        """Calculation of distance between colors in rgb space
+    @property
+    def current_rgb(self):
+        return self.__current_rgb
 
-        Arguments:
-            current_pixel(np.array): RGB of first pixel
-            sample_pixel(np.array): RGB of second pixel
-        """
-        difference = current_pixel - sample_pixel
-        return np.sum(difference ** 2)
+    @current_rgb.setter
+    def current_rgb(self, current_rgb):
+        self.__previous_rgb = np.copy(self.__current_rgb)
+        self.__current_rgb = current_rgb
+
+    @property
+    def mask(self):
+        return self.__mask
+
+
+def color_distance(current_pixel, sample_pixel):
+    """Calculation of distance between colors in rgb space
+
+    Arguments:
+        current_pixel(np.array): RGB of first pixel
+        sample_pixel(np.array): RGB of second pixel
+    """
+    difference = current_pixel - sample_pixel
+    return np.sum(difference ** 2)
+
+
+def get_random_neighbour(index, resolution, area):
+    neighbour_index = index + np.random.choice(area)
+    while neighbour_index < 0 or neighbour_index >= resolution:
+        neighbour_index = index + np.random.choice(area)
+    return neighbour_index

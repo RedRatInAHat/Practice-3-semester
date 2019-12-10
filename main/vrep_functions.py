@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import array
 from PIL import Image as I
+import math
 
 
 def vrep_connection():
@@ -102,3 +103,38 @@ def calculate_point_cloud(rgb, depth, cam_angle, near_clipping_plane, far_clippi
     xyzrgb = np.asarray(xyzrgb)
 
     return xyzrgb[:, :3], xyzrgb[:,3:6]
+
+
+def vrep_change_properties(client_id, object_id, parameter_id, parameter_value):
+    """Changing properties of sensors in vrep
+
+    client_id (int): ID of current scene in vrep
+    object_id (int): ID of sensor to change
+    parameter_id (int): ID of parameter to change
+    parameter_value (int/double): value of parameter to change
+    """
+    params_f = {'near_clipping_plane': 1000,
+                'far_clipping_plane': 1001,
+                'perspective_angle': 1004
+                }
+
+    params_i = {'vision_sensor_resolution_x': 1002,
+                'vision_sensor_resolution_y': 1003
+                }
+
+    if parameter_id == 'perspective_angle':
+        parameter_value = parameter_value/(180*2)*math.pi
+    if parameter_id in params_f:
+        error = vrep.simxSetObjectFloatParameter(client_id, object_id, params_f[parameter_id], parameter_value,
+                                                 vrep.simx_opmode_blocking)
+        vrep.simxSetFloatSignal(client_id, 'change_params', parameter_value, vrep.simx_opmode_blocking)
+        vrep.simxClearFloatSignal(client_id, 'change_params', vrep.simx_opmode_blocking)
+        return error
+    elif parameter_id in params_i:
+        error = vrep.simxSetObjectIntParameter(client_id, object_id, params_i[parameter_id], parameter_value,
+                                               vrep.simx_opmode_blocking)
+        vrep.simxSetFloatSignal(client_id, 'change_params', parameter_value, vrep.simx_opmode_blocking)
+        vrep.simxClearFloatSignal(client_id, 'change_params', vrep.simx_opmode_blocking)
+        return error
+    else:
+        return 'parameter wasn\'t found'
