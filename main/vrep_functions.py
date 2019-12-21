@@ -57,54 +57,6 @@ def vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id):
     return depth, rgb
 
 
-def calculate_point_cloud(rgb, depth, cam_angle, near_clipping_plane, far_clipping_plane, step=1):
-    """Calculation of point cloud from images arrays and kinect properties
-
-    Arguments:
-        rgb (float array): array contains colors of point cloud
-        depth (float array): array contains depth values
-        cam_angle (float): angle of camera view
-        near_clipping_plane (float): distance to the nearest objects the camera sees
-        far_clipping_plane (float): distance to the farthest objects the camera sees
-        step (int): step for the cycle; use to reduce the number of returning points
-
-    Returns:
-        numpy.array 1: coordinates of points
-        numpy.array 2: color of points
-    """
-    from math import tan, pi, atan, sin, radians
-
-    xyzrgb = []
-
-    depth_amplitude = far_clipping_plane - near_clipping_plane
-
-    x_resolution = depth.shape[1]
-    y_resolution = depth.shape[0]
-
-    x_half_angle = radians(cam_angle) / 2.
-    y_half_angle = radians(cam_angle) / 2. * y_resolution / x_resolution
-
-    max_dist = 1.
-    min_dist = near_clipping_plane * max_dist / far_clipping_plane
-
-    for i in range(0, x_resolution, step):
-        x_angle = atan((x_resolution / 2.0 - i - 0.5) / (x_resolution / 2.0) * tan(x_half_angle))
-        for j in range(0, y_resolution, step):
-            y_angle = atan((j - y_resolution / 2.0 + 0.5) / (y_resolution / 2.0) * tan(y_half_angle))
-            point_depth = depth[j, i]
-            if max_dist > point_depth > min_dist:
-                z = near_clipping_plane + point_depth * depth_amplitude
-                x = tan(x_angle) * z
-                y = tan(y_angle) * z
-
-                xyzrgb.append([0] * 6)
-                xyzrgb[-1] = [x, y, z, rgb[j, i, 0], rgb[j, i, 1], rgb[j, i, 2]]
-
-    xyzrgb = np.asarray(xyzrgb)
-
-    return xyzrgb[:, :3], xyzrgb[:,3:6]
-
-
 def vrep_change_properties(client_id, object_id, parameter_id, parameter_value):
     """Changing properties of sensors in vrep
 
