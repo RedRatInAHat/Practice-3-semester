@@ -108,6 +108,22 @@ def save_image(input_image, path_to_image, frame_number=0, image_name="unknown")
     image.save(path_to_image + "/" + image_name + str(frame_number) + ".png")
 
 
+def load_image(path_to_image, name_of_image, mode="RGB"):
+    import cv2
+
+    if mode == "RGB":
+        img = cv2.imread(path_to_image + "/" + name_of_image)
+    else:
+        img = cv2.imread(path_to_image + "/" + name_of_image, 0)
+
+    return img
+
+
 if __name__ == "__main__":
-    create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 3, resolution_y=48 * 3,
-                             path_to_images="falling ball")
+    # create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 3, resolution_y=48 * 3,
+    #                          path_to_images="falling ball")
+
+    create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 2, resolution_y=48 * 2,
+                             path_to_images="falling ball 64x2_48x2")
+
+    load_image("falling ball", "depth_0.png", "depth")

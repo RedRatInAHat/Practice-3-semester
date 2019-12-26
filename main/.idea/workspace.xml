@@ -24,7 +24,7 @@
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunManager" selected="Python.NIR 3 semester">
-    <configuration name="Main body" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="Background_Subtraction" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -32,11 +32,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="E:/Миграция файлов/Документы/We need english/NIR 2 sem/Predicting v10" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-subtraction-of-a-CCTV-video-master" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="E:/Миграция файлов/Документы/We need english/NIR 2 sem/Predicting v10/Main body.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-subtraction-of-a-CCTV-video-master/Background_Subtraction.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -87,7 +87,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="points_object" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="loop" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -95,11 +95,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/points_object.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master/loop.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -108,7 +108,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="vrep_functions" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -116,11 +116,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/vrep_functions.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master/main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -132,10 +132,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.NIR 3 semester" />
+        <item itemvalue="Python.main" />
+        <item itemvalue="Python.loop" />
+        <item itemvalue="Python.Background_Subtraction" />
         <item itemvalue="Python.image_processing" />
-        <item itemvalue="Python.points_object" />
-        <item itemvalue="Python.vrep_functions" />
-        <item itemvalue="Python.Main body" />
       </list>
     </recent_temporary>
   </component>
@@ -165,46 +165,50 @@
     <servers />
   </component>
   <component name="WindowStateProjectService">
-    <state width="1898" height="276" key="GridCell.Tab.0.bottom" timestamp="1576946954911">
+    <state width="1898" height="341" key="GridCell.Tab.0.bottom" timestamp="1577295034404">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1576946954911" />
-    <state width="1898" height="276" key="GridCell.Tab.0.center" timestamp="1576946954911">
+    <state width="1898" height="341" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
+    <state width="1898" height="341" key="GridCell.Tab.0.center" timestamp="1577295034404">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1576946954911" />
-    <state width="1898" height="276" key="GridCell.Tab.0.left" timestamp="1576946954911">
+    <state width="1898" height="341" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
+    <state width="1898" height="341" key="GridCell.Tab.0.left" timestamp="1577295034404">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1576946954911" />
-    <state width="1898" height="276" key="GridCell.Tab.0.right" timestamp="1576946954911">
+    <state width="1898" height="341" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
+    <state width="1898" height="341" key="GridCell.Tab.0.right" timestamp="1577295034404">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1576946954911" />
-    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1575904434411">
+    <state width="1898" height="341" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1577295034405">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
-    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1575904434411">
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034405" />
+    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1577295034404">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
-    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1575904434411">
+    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
+    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1577295034404">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
-    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1575904434411">
+    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
+    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1577295034405">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1575904434411" />
+    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034405" />
     <state x="461" y="151" key="SettingsEditor" timestamp="1576421591409">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="461" y="151" key="SettingsEditor/0.0.1920.1040@0.0.1920.1040" timestamp="1576421591409" />
-    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1576915905213">
+    <state x="681" y="250" width="540" height="524" key="StructurePopup" timestamp="1576997348781">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1576915905213" />
+    <state x="681" y="250" width="540" height="524" key="StructurePopup/0.0.1920.1040@0.0.1920.1040" timestamp="1576997348781" />
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1577280259067">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1577280259067" />
     <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1576431920046">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>

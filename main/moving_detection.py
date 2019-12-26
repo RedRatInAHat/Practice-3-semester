@@ -3,7 +3,7 @@ import math
 import random
 from collections import deque
 from dataclasses import dataclass
-from typing import List
+import warnings
 
 
 @dataclass
@@ -15,12 +15,15 @@ class RGB:
 
 @dataclass
 class Gaussian:
-    index: List[int]
-    mean: List[List[float]]
-    luminance_variance: List[float]
-    color_variance: List[float]
-    depth_variance: List[float]
-    weight: List[float]
+    index: np.ndarray
+    luminance_mean: np.ndarray
+    color_mean: np.ndarray
+    depth_mean: np.ndarray
+    luminance_variance: np.ndarray
+    color_variance: np.ndarray
+    depth_variance: np.ndarray
+    weight: np.ndarray
+    ranking: np.ndarray
 
 
 class FrameDifference:
@@ -468,7 +471,267 @@ class DEVB:
         self.__mask = mask
 
 
-class MoG:
+class RGB_MoG_v1:
+
+    def __init__(self, rgb_im, number_of_gaussians=2, learning_rate_alfa=.025, learning_rate_ro=0.11):
+        self.__number_of_gaussians = number_of_gaussians
+        self.__learning_rate_alfa = learning_rate_alfa
+        self.__learning_rate_ro = learning_rate_ro
+
+        self.__height = rgb_im.shape[0]
+        self.__width = rgb_im.shape[1]
+
+        try:
+            self.__number_of_channels = rgb_im.shape[2]
+        except:
+            self.__number_of_channels = 1
+
+        self.__current_rgb = rgb_im * 255
+        self.__gaussians = []
+        self.__mask = np.zeros([self.__height, self.__width])
+        self.__matching_criterion = np.zeros(
+            [self.__height * self.__width, self.__number_of_channels, self.__number_of_gaussians])
+
+        self.initialization()
+
+    def initialization(self):
+        initial_means = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
+
+        # taking number_of_gaussians evenly distributed numbers for each channel of image
+        for i, row in enumerate(initial_means):
+            for j, _ in enumerate(row):
+                initial_means[i, j] = round((i + 1) * 255 / (self.__number_of_gaussians + 1))
+
+        # taking parameters for mean, variance and matching_criterion
+        mean = self.select_means(initial_means)
+        variance = self.get_variances(mean)
+
+        print(mean)
+
+        initial_ranking = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
+        for i in range(self.__number_of_channels):
+            initial_ranking[:, i] = [j for j in range(self.__number_of_gaussians)]
+
+        for h in range(self.__height):
+            for w in range(self.__width):
+                weight = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
+                for g in range(self.__number_of_gaussians):
+                    for c in range(self.__number_of_channels):
+                        weight[g, c] = 1 / self.__number_of_gaussians * (
+                                1 - self.__learning_rate_alfa) + self.__learning_rate_alfa * \
+                                       self.__matching_criterion[w * h, c, g]
+
+                self.__gaussians.append(
+                    Gaussian(index=np.asarray([h, w]), luminance_mean=np.asarray([]), color_mean=mean,
+                             depth_mean=np.asarray([]), luminance_variance=np.asarray([]), color_variance=variance,
+                             depth_variance=np.asarray([]), weight=weight, ranking=initial_ranking))
+
+    def set_mask(self, rgb_im):
+
+        self.__current_rgb = rgb_im * 255
+        self.__mask = np.zeros([self.__height, self.__width])
+        fore = back = np.zeros_like(rgb_im)
+
+        for gauss in self.__gaussians:
+
+            current_difference = np.abs(gauss.color_mean - self.__current_rgb[gauss.index[0], gauss.index[1]])
+
+            for c in range(self.__number_of_channels):
+
+                belongs_to_current_gaussians = False
+
+                for g in gauss.ranking[:, c].astype(int):
+                    if current_difference[g, c] < 2.5 * math.sqrt(gauss.color_variance[g]):
+                        gauss.color_mean[g, c] *= 1 - self.__learning_rate_ro
+                        gauss.color_mean[g, c] += self.__learning_rate_ro * self.__current_rgb[
+                            gauss.index[0], gauss.index[1], c]
+
+                        gauss.color_variance[g] *= 1 - self.__learning_rate_ro
+                        gauss.color_variance[g] += self.__learning_rate_ro * current_difference[g, c] ** 2
+
+                        gauss.weight[g, c] *= 1 - self.__learning_rate_alfa
+                        gauss.weight[g, c] += self.__learning_rate_alfa
+
+                        belongs_to_current_gaussians = True
+                    else:
+                        gauss.weight[g, c] *= 1 - self.__learning_rate_alfa
+
+                gauss.weight[:, c] = gauss.weight[:, c] / np.sum(gauss.weight[:, c])
+
+                gauss.ranking[:, c] = np.argsort(-gauss.weight[:, c] / gauss.color_variance)
+
+                if not belongs_to_current_gaussians:
+                    gauss.color_mean[gauss.ranking[-1, c].astype(int), c] = self.__current_rgb[
+                        gauss.index[0], gauss.index[1], c]
+                    gauss.color_mean[gauss.ranking[-1, c].astype(int), c] = 10000
+
+                b = 0
+                B = 0
+                for i, g in enumerate(gauss.ranking[:, c].astype(int)):
+                    b = b + gauss.weight[g, c]
+                    if b > 0.9:
+                        B = i
+                        break
+
+                for j in range(1):
+                    current_index = gauss.ranking[j, c].astype(int)
+                    if not belongs_to_current_gaussians or abs(self.__current_rgb[gauss.index[0], gauss.index[1], c] -
+                                                               gauss.color_mean[current_index, c]) > \
+                            (2.5 * gauss.color_variance[current_index] ** (1 / 2.0)):
+                        fore[gauss.index[0], gauss.index[1], c] = self.__current_rgb[gauss.index[0], gauss.index[1], c]
+                        back[gauss.index[0], gauss.index[1], c] = gauss.color_mean[current_index, c]
+                        break
+                    else:
+                        fore[gauss.index[0], gauss.index[1], c] = 255
+                        back[gauss.index[0], gauss.index[1], c] = self.__current_rgb[gauss.index[0], gauss.index[1], c]
+
+        return fore, back
+
+    def select_means(self, current_means, stop_rate_of_convergence=10, max_itteration=10):
+
+        rate_of_convergence = stop_rate_of_convergence + 1
+        itteration = 0
+
+        # while there is no good enough approximation searching for the best matching gaussians. Exit if it is too long
+        while rate_of_convergence > stop_rate_of_convergence and itteration < max_itteration:
+            previous_means = np.copy(current_means)
+            self.__matching_criterion = np.zeros(
+                [self.__height * self.__width, self.__number_of_channels, self.__number_of_gaussians])
+            number_of_mean_matches = np.ones_like(current_means)
+
+            # for each pixel of image searching for the best approximating value in means of gaussians
+            for h in range(self.__height):
+                for w in range(self.__width):
+                    for c in range(self.__number_of_channels):
+                        # searching for an index of the mean which is the nearest to pixel value
+                        min_index = np.argmin(np.abs(previous_means[:, c] - self.__current_rgb[h, w, c]))
+                        self.__matching_criterion[h * w, c, min_index] = 1
+                        current_means[min_index, c] += self.__current_rgb[h, w, c]
+                        number_of_mean_matches[min_index, c] += 1
+            # filling current means with the mean value of matching rgb values
+            current_means = np.around(np.divide(current_means, number_of_mean_matches))
+
+            rate_of_convergence = np.sum((previous_means - current_means) ** 2)
+            itteration += 1
+        return current_means
+
+    def get_variances(self, means):
+        current_variances = np.zeros([self.__number_of_gaussians])
+
+        for g in range(self.__number_of_gaussians):
+            temp_matching_criterion = np.reshape(self.__matching_criterion[:, 0, g], (self.__height, self.__width))
+            current_variances[g] = np.sum(
+                (self.__current_rgb[:, :, 0] - means[g, 0]) ** 2 * temp_matching_criterion)
+            p = np.sum(self.__matching_criterion[:, 0, g])
+            current_variances[g] = current_variances[g] / p
+
+        return current_variances
+
+
+class RGB_MoG:
+
+    def __init__(self, rgb_im, number_of_gaussians=2, learning_rate_alfa=.025, threshold=0.4):
+        self.__number_of_gaussians = number_of_gaussians
+        self.__learning_rate_alfa = learning_rate_alfa
+        self.__threshold = threshold
+
+        self.__height = rgb_im.shape[0]
+        self.__width = rgb_im.shape[1]
+
+        try:
+            self.__number_of_channels = rgb_im.shape[2]
+        except:
+            self.__number_of_channels = 1
+
+        self.__current_rgb = rgb_im * 255
+        self.__gaussians = []
+        self.__mask = np.zeros([self.__height, self.__width])
+
+        self.initialization()
+
+    def initialization(self):
+
+        mean = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
+        variance = np.ones([self.__number_of_gaussians])
+        weight = np.ones([self.__number_of_gaussians]) / self.__number_of_gaussians
+        initial_ranking = np.arange(self.__number_of_gaussians)
+
+        for h in range(self.__height):
+            for w in range(self.__width):
+                self.__gaussians.append(
+                    Gaussian(index=np.asarray([h, w]), luminance_mean=np.asarray([]), color_mean=mean,
+                             depth_mean=np.asarray([]), luminance_variance=np.asarray([]), color_variance=variance,
+                             depth_variance=np.asarray([]), weight=weight, ranking=initial_ranking))
+
+    def set_raking(self, gauss):
+        gauss.ranking = np.argsort(-gauss.weight / gauss.color_variance)
+
+    def get_ranking_mask(self, gauss):
+        ranked_weight = np.cumsum(gauss.weight[gauss.ranking])
+        ranking_mask = np.choose(gauss.ranking, (ranked_weight < self.__threshold))
+        return ranking_mask
+
+    def probability(self, gauss):
+        dist_square = np.sum((self.__current_rgb[gauss.index[0], gauss.index[1]] - gauss.color_mean) ** 2,
+                             axis=1) / gauss.color_variance
+        dist = np.sqrt(dist_square)
+
+        probability = np.exp(dist_square / (-2)) / (np.sqrt((2 * np.pi) ** 3) * gauss.color_variance)
+
+        matching_criterion = (dist < 2.5 * gauss.color_variance)
+        return matching_criterion, probability
+
+    def update(self, gauss, matching_criterion, probability):
+
+        learning_rate_ro = self.__learning_rate_alfa * probability
+
+        update_status = np.bitwise_or.reduce(matching_criterion, axis=0)
+        update_mask = np.where(update_status, matching_criterion, -1)
+
+        gauss.weight = np.where(update_mask == 1,
+                                (1 - self.__learning_rate_alfa) * gauss.weight + self.__learning_rate_alfa,
+                                gauss.weight)
+        gauss.weight = np.where(update_mask == 0, (1 - self.__learning_rate_alfa) * gauss.weight, gauss.weight)
+        gauss.weight = np.where(update_mask == -1, 0.0001, gauss.weight)
+
+        gauss.color_mean = np.where(update_mask == 1,
+                                    (1 - learning_rate_ro) * gauss.color_mean + learning_rate_ro * self.__current_rgb[
+                                        gauss.index[0], gauss.index[1]], gauss.color_mean)
+        gauss.color_mean = np.where(update_mask == -1, self.__current_rgb[gauss.index[0], gauss.index[1]],
+                                    gauss.color_mean)
+
+        gauss.color_variance = np.where(update_mask == 1, np.sqrt(
+            (1 - learning_rate_ro) * (gauss.color_variance ** 2) + learning_rate_ro * (
+                np.sum(np.subtract(self.__current_rgb[gauss.index[0], gauss.index[1]], gauss.color_mean) ** 2))),
+                                        gauss.color_variance)
+        gauss.color_variance = np.where(update_mask == -1, 3 + np.ones(self.__number_of_gaussians),
+                                        gauss.color_variance)
+
+    def make_mask(self, matching_criterion, ranking_mask):
+        update_status = np.bitwise_or.reduce(matching_criterion, axis=0)
+
+        background = 0
+        foreground = 255
+        res = np.where(not update_status, foreground, background)
+
+        n = np.bitwise_and(update_status, ranking_mask)
+        n = np.bitwise_or.reduce(matching_criterion, axis=0)
+        res = np.where(n, background, foreground)
+
+        return res
+
+    def set_mask(self, rgb_im):
+        self.__current_rgb = rgb_im
+        for gauss in self.__gaussians:
+            self.set_raking(gauss)
+            ranking_mask = self.get_ranking_mask(gauss)
+            matching_criterion, probability = self.probability(gauss)
+            self.update(gauss, matching_criterion, probability)
+            self.__mask[gauss.index[0], gauss.index[1]] = self.make_mask(matching_criterion, ranking_mask)
+        return self.__mask
+
+
+class RGBD_MoG:
 
     def __init__(self, rgb_im, depth_im, number_of_gaussians=3, learning_rate=.025):
 

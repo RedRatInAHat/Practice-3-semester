@@ -1,9 +1,11 @@
 import vrep_functions
 from points_object import PointsObject
-from moving_detection import FrameDifference, ViBЕ, DEVB, MoG
+from moving_detection import FrameDifference, ViBЕ, DEVB, RGB_MoG, RGBD_MoG
 import visualization
+import image_processing
 import numpy as np
 import time
+import cv2
 
 cam_angle = 57.
 near_clipping_plane = 0.1
@@ -34,7 +36,6 @@ def try_vrep_connection():
 
 
 def try_frame_difference():
-    import cv2
 
     client_id = vrep_functions.vrep_connection()
     kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
@@ -73,7 +74,6 @@ def try_frame_difference():
 
 
 def try_ViBE():
-    import cv2
 
     client_id = vrep_functions.vrep_connection()
     kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
@@ -102,7 +102,6 @@ def try_ViBE():
 
 
 def try_DEVB():
-    import cv2
 
     client_id = vrep_functions.vrep_connection()
     kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
@@ -132,11 +131,22 @@ def try_DEVB():
     vrep_functions.vrep_stop_sim(client_id)
 
 
-def try_MoG():
+def try_RGB_MoG():
 
+    frame_number = 0
+    rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(frame_number) + ".png")
     start = time.time()
-    mog = MoG(np.empty([resolution_x, resolution_y, 3]), np.empty([resolution_x, resolution_y]))
-    print(time.time() - start)
+    mog = RGB_MoG(rgb_im, number_of_gaussians=3)
+    print("initialization: ", time.time() - start)
+    for i in range(4):
+        frame_number += 1
+        rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(frame_number) + ".png")
+        start = time.time()
+        mask = mog.set_mask(rgb_im)
+        print("frame updating: ", time.time() - start)
+        cv2.imshow("image", mask)
+        cv2.waitKey(0)
+
 
 
 if __name__ == "__main__":
@@ -144,4 +154,4 @@ if __name__ == "__main__":
     # try_frame_difference()
     # try_ViBE()
     # try_DEVB()
-    try_MoG()
+    try_RGB_MoG()
