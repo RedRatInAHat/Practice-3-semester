@@ -117,7 +117,7 @@ def try_DEVB():
     devb = DEVB(rgb_im=rgb_im, depth_im=depth_im, number_of_samples=10, time_factor=16)
     print(time.time() - start)
 
-    for i in range(4):
+    for i in range(5):
         depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
         start = time.time()
         devb.set_images(rgb_im, depth_im)
@@ -133,20 +133,34 @@ def try_DEVB():
 
 def try_RGB_MoG():
 
-    frame_number = 0
-    rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(frame_number) + ".png")
+    rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(0) + ".png")
     start = time.time()
     mog = RGB_MoG(rgb_im, number_of_gaussians=3)
     print("initialization: ", time.time() - start)
-    for i in range(4):
-        frame_number += 1
-        rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(frame_number) + ".png")
+    for i in range(5):
+        rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(i) + ".png")
         start = time.time()
         mask = mog.set_mask(rgb_im)
         print("frame updating: ", time.time() - start)
+        cv2.imshow("original", rgb_im)
         cv2.imshow("image", mask)
         cv2.waitKey(0)
 
+def try_RGBD_MoG():
+    rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(0) + ".png")
+    depth_im = image_processing.load_image("falling ball 64x2_48x2", "depth_" + str(0) + ".png", "depth")
+    start = time.time()
+    mog = RGBD_MoG(rgb_im, depth_im, number_of_gaussians=3)
+    print("initialization: ", time.time() - start)
+    for i in range(5):
+        rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(i) + ".png")
+        depth_im = image_processing.load_image("falling ball 64x2_48x2", "depth_" + str(i) + ".png", "depth")
+        start = time.time()
+        mask = mog.set_mask(rgb_im, depth_im)
+        print("frame updating: ", time.time() - start)
+        image = np.concatenate((rgb_im, cv2.cvtColor(mask,cv2.COLOR_GRAY2RGB)), axis=1)
+        cv2.imshow("image", image)
+        cv2.waitKey(0)
 
 
 if __name__ == "__main__":
@@ -154,4 +168,5 @@ if __name__ == "__main__":
     # try_frame_difference()
     # try_ViBE()
     # try_DEVB()
-    try_RGB_MoG()
+    # try_RGB_MoG()
+    try_RGBD_MoG()

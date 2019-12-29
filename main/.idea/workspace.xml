@@ -66,27 +66,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="image_processing" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="Ply_to_cloud" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/image_processing.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="loop" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -100,6 +79,27 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master/loop.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Ply_to_cloud" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -133,9 +133,9 @@
       <list>
         <item itemvalue="Python.NIR 3 semester" />
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.main (1)" />
         <item itemvalue="Python.loop" />
         <item itemvalue="Python.Background_Subtraction" />
-        <item itemvalue="Python.image_processing" />
       </list>
     </recent_temporary>
   </component>
@@ -165,38 +165,42 @@
     <servers />
   </component>
   <component name="WindowStateProjectService">
-    <state width="1898" height="341" key="GridCell.Tab.0.bottom" timestamp="1577295034404">
+    <state x="708" y="322" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1577559768543">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
-    <state width="1898" height="341" key="GridCell.Tab.0.center" timestamp="1577295034404">
+    <state x="708" y="322" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1920.1040@0.0.1920.1040" timestamp="1577559768543" />
+    <state width="1898" height="276" key="GridCell.Tab.0.bottom" timestamp="1577601808503">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
-    <state width="1898" height="341" key="GridCell.Tab.0.left" timestamp="1577295034404">
+    <state width="1898" height="276" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
+    <state width="1898" height="276" key="GridCell.Tab.0.center" timestamp="1577601808503">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
-    <state width="1898" height="341" key="GridCell.Tab.0.right" timestamp="1577295034404">
+    <state width="1898" height="276" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
+    <state width="1898" height="276" key="GridCell.Tab.0.left" timestamp="1577601808503">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
-    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1577295034405">
+    <state width="1898" height="276" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
+    <state width="1898" height="276" key="GridCell.Tab.0.right" timestamp="1577601808503">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034405" />
-    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1577295034404">
+    <state width="1898" height="276" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1577544902740">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
-    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1577295034404">
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
+    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1577544902740">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034404" />
-    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1577295034405">
+    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
+    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1577544902740">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577295034405" />
+    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
+    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1577544902740">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
     <state x="461" y="151" key="SettingsEditor" timestamp="1576421591409">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -205,10 +209,10 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="681" y="250" width="540" height="524" key="StructurePopup/0.0.1920.1040@0.0.1920.1040" timestamp="1576997348781" />
-    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1577280259067">
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1577519396931">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1577280259067" />
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1577519396931" />
     <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1576431920046">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>

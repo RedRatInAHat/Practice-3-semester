@@ -15,15 +15,16 @@ class RGB:
 
 @dataclass
 class Gaussian:
-    index: np.ndarray
-    luminance_mean: np.ndarray
-    color_mean: np.ndarray
-    depth_mean: np.ndarray
-    luminance_variance: np.ndarray
-    color_variance: np.ndarray
-    depth_variance: np.ndarray
-    weight: np.ndarray
-    ranking: np.ndarray
+    index: np.ndarray = np.asarray([])
+    luminance_mean: np.ndarray = np.asarray([])
+    color_mean: np.ndarray = np.asarray([])
+    depth_mean: np.ndarray = np.asarray([])
+    luminance_variance: np.ndarray = np.asarray([])
+    color_variance: np.ndarray = np.asarray([])
+    depth_variance: np.ndarray = np.asarray([])
+    weight: np.ndarray = np.asarray([])
+    ranking: np.ndarray = np.asarray([])
+    depth_observations: np.ndarray = np.asarray([])
 
 
 class FrameDifference:
@@ -263,62 +264,6 @@ class ViBЕ:
         self.__mask = mask
 
 
-# that part kills Python.exe for some reason
-# class DEVB(ViBЕ):
-#
-#     def __init__(self, rgb_im, depth_im, number_of_samples=20, threshold_lambda=2, threshold_r=20 / 255,
-#                  threshold_theta=3 / 255, time_factor=16, neighbourhood_area=4):
-#
-#         ViBЕ.__init__(self, rgb_im, number_of_samples, threshold_lambda, threshold_r, time_factor, neighbourhood_area)
-#
-#         self.__current_depth = depth_im
-#         self.__threshold_theta = threshold_theta
-#
-#         self.__depth_background = depth_im
-#
-#         self.initial_background()
-#
-#     def set_pixel(self, i, j):
-#
-#         if self.in_background(i, j):
-#
-#             self.mask[i, j] = 0
-#
-#             if time_factor_chance(self.time_factor):
-#                 self.update_sample(i, j, i, j)
-#
-#             if time_factor_chance(self.time_factor):
-#                 neighbour_i = get_random_neighbour(i, self.current_rgb.shape[0], self.potential_neighbours)
-#                 neighbour_j = get_random_neighbour(j, self.current_rgb.shape[1], self.potential_neighbours)
-#                 self.update_sample(neighbour_i, neighbour_j, i, j)
-#                 self.__depth_background[i, j] = self.__current_depth[i, j]
-#         else:
-#
-#             self.mask[i, j] = 1
-#             if color_distance(self.__depth_background, self.__current_depth) > self.__threshold_theta:
-#                 self.mask[i, j] = 0
-#
-#                 if time_factor_chance(self.time_factor):
-#                     self.update_sample(i, j, i, j)
-#
-#                 if time_factor_chance(self.time_factor):
-#                     neighbour_i = get_random_neighbour(i, self.current_rgb.shape[0], self.potential_neighbours)
-#                     neighbour_j = get_random_neighbour(j, self.current_rgb.shape[1], self.potential_neighbours)
-#                     self.update_sample(neighbour_i, neighbour_j, i, j)
-#                     self.__depth_background[i, j] = self.__current_depth[i, j]
-#
-#     def set_images(self, current_rgb, current_depth):
-#         self.current_rgb = current_rgb
-#         self.__current_depth = current_depth
-#
-#     @property
-#     def current_depth(self):
-#         return self.__current_depth
-#
-#     @current_depth.setter
-#     def current_depth(self, current_depth):
-#         self.__current_depth = current_depth
-
 class DEVB:
     """Class for finding moving objects by Depth-Extended ViBe (DEVB)
 
@@ -471,169 +416,23 @@ class DEVB:
         self.__mask = mask
 
 
-class RGB_MoG_v1:
-
-    def __init__(self, rgb_im, number_of_gaussians=2, learning_rate_alfa=.025, learning_rate_ro=0.11):
-        self.__number_of_gaussians = number_of_gaussians
-        self.__learning_rate_alfa = learning_rate_alfa
-        self.__learning_rate_ro = learning_rate_ro
-
-        self.__height = rgb_im.shape[0]
-        self.__width = rgb_im.shape[1]
-
-        try:
-            self.__number_of_channels = rgb_im.shape[2]
-        except:
-            self.__number_of_channels = 1
-
-        self.__current_rgb = rgb_im * 255
-        self.__gaussians = []
-        self.__mask = np.zeros([self.__height, self.__width])
-        self.__matching_criterion = np.zeros(
-            [self.__height * self.__width, self.__number_of_channels, self.__number_of_gaussians])
-
-        self.initialization()
-
-    def initialization(self):
-        initial_means = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
-
-        # taking number_of_gaussians evenly distributed numbers for each channel of image
-        for i, row in enumerate(initial_means):
-            for j, _ in enumerate(row):
-                initial_means[i, j] = round((i + 1) * 255 / (self.__number_of_gaussians + 1))
-
-        # taking parameters for mean, variance and matching_criterion
-        mean = self.select_means(initial_means)
-        variance = self.get_variances(mean)
-
-        print(mean)
-
-        initial_ranking = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
-        for i in range(self.__number_of_channels):
-            initial_ranking[:, i] = [j for j in range(self.__number_of_gaussians)]
-
-        for h in range(self.__height):
-            for w in range(self.__width):
-                weight = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
-                for g in range(self.__number_of_gaussians):
-                    for c in range(self.__number_of_channels):
-                        weight[g, c] = 1 / self.__number_of_gaussians * (
-                                1 - self.__learning_rate_alfa) + self.__learning_rate_alfa * \
-                                       self.__matching_criterion[w * h, c, g]
-
-                self.__gaussians.append(
-                    Gaussian(index=np.asarray([h, w]), luminance_mean=np.asarray([]), color_mean=mean,
-                             depth_mean=np.asarray([]), luminance_variance=np.asarray([]), color_variance=variance,
-                             depth_variance=np.asarray([]), weight=weight, ranking=initial_ranking))
-
-    def set_mask(self, rgb_im):
-
-        self.__current_rgb = rgb_im * 255
-        self.__mask = np.zeros([self.__height, self.__width])
-        fore = back = np.zeros_like(rgb_im)
-
-        for gauss in self.__gaussians:
-
-            current_difference = np.abs(gauss.color_mean - self.__current_rgb[gauss.index[0], gauss.index[1]])
-
-            for c in range(self.__number_of_channels):
-
-                belongs_to_current_gaussians = False
-
-                for g in gauss.ranking[:, c].astype(int):
-                    if current_difference[g, c] < 2.5 * math.sqrt(gauss.color_variance[g]):
-                        gauss.color_mean[g, c] *= 1 - self.__learning_rate_ro
-                        gauss.color_mean[g, c] += self.__learning_rate_ro * self.__current_rgb[
-                            gauss.index[0], gauss.index[1], c]
-
-                        gauss.color_variance[g] *= 1 - self.__learning_rate_ro
-                        gauss.color_variance[g] += self.__learning_rate_ro * current_difference[g, c] ** 2
-
-                        gauss.weight[g, c] *= 1 - self.__learning_rate_alfa
-                        gauss.weight[g, c] += self.__learning_rate_alfa
-
-                        belongs_to_current_gaussians = True
-                    else:
-                        gauss.weight[g, c] *= 1 - self.__learning_rate_alfa
-
-                gauss.weight[:, c] = gauss.weight[:, c] / np.sum(gauss.weight[:, c])
-
-                gauss.ranking[:, c] = np.argsort(-gauss.weight[:, c] / gauss.color_variance)
-
-                if not belongs_to_current_gaussians:
-                    gauss.color_mean[gauss.ranking[-1, c].astype(int), c] = self.__current_rgb[
-                        gauss.index[0], gauss.index[1], c]
-                    gauss.color_mean[gauss.ranking[-1, c].astype(int), c] = 10000
-
-                b = 0
-                B = 0
-                for i, g in enumerate(gauss.ranking[:, c].astype(int)):
-                    b = b + gauss.weight[g, c]
-                    if b > 0.9:
-                        B = i
-                        break
-
-                for j in range(1):
-                    current_index = gauss.ranking[j, c].astype(int)
-                    if not belongs_to_current_gaussians or abs(self.__current_rgb[gauss.index[0], gauss.index[1], c] -
-                                                               gauss.color_mean[current_index, c]) > \
-                            (2.5 * gauss.color_variance[current_index] ** (1 / 2.0)):
-                        fore[gauss.index[0], gauss.index[1], c] = self.__current_rgb[gauss.index[0], gauss.index[1], c]
-                        back[gauss.index[0], gauss.index[1], c] = gauss.color_mean[current_index, c]
-                        break
-                    else:
-                        fore[gauss.index[0], gauss.index[1], c] = 255
-                        back[gauss.index[0], gauss.index[1], c] = self.__current_rgb[gauss.index[0], gauss.index[1], c]
-
-        return fore, back
-
-    def select_means(self, current_means, stop_rate_of_convergence=10, max_itteration=10):
-
-        rate_of_convergence = stop_rate_of_convergence + 1
-        itteration = 0
-
-        # while there is no good enough approximation searching for the best matching gaussians. Exit if it is too long
-        while rate_of_convergence > stop_rate_of_convergence and itteration < max_itteration:
-            previous_means = np.copy(current_means)
-            self.__matching_criterion = np.zeros(
-                [self.__height * self.__width, self.__number_of_channels, self.__number_of_gaussians])
-            number_of_mean_matches = np.ones_like(current_means)
-
-            # for each pixel of image searching for the best approximating value in means of gaussians
-            for h in range(self.__height):
-                for w in range(self.__width):
-                    for c in range(self.__number_of_channels):
-                        # searching for an index of the mean which is the nearest to pixel value
-                        min_index = np.argmin(np.abs(previous_means[:, c] - self.__current_rgb[h, w, c]))
-                        self.__matching_criterion[h * w, c, min_index] = 1
-                        current_means[min_index, c] += self.__current_rgb[h, w, c]
-                        number_of_mean_matches[min_index, c] += 1
-            # filling current means with the mean value of matching rgb values
-            current_means = np.around(np.divide(current_means, number_of_mean_matches))
-
-            rate_of_convergence = np.sum((previous_means - current_means) ** 2)
-            itteration += 1
-        return current_means
-
-    def get_variances(self, means):
-        current_variances = np.zeros([self.__number_of_gaussians])
-
-        for g in range(self.__number_of_gaussians):
-            temp_matching_criterion = np.reshape(self.__matching_criterion[:, 0, g], (self.__height, self.__width))
-            current_variances[g] = np.sum(
-                (self.__current_rgb[:, :, 0] - means[g, 0]) ** 2 * temp_matching_criterion)
-            p = np.sum(self.__matching_criterion[:, 0, g])
-            current_variances[g] = current_variances[g] / p
-
-        return current_variances
-
-
 class RGB_MoG:
+    """Class for finding moving objects by Mixture of Gaussians with RGB image
 
-    def __init__(self, rgb_im, number_of_gaussians=2, learning_rate_alfa=.025, threshold=0.4):
+    Attributes:
+        __number_of_gaussians (int): number of gaussians for each color channel in each pixel
+        __learning_rate_alfa (float): coefficient representing speed of changing of gaussians
+        __height (int): height of image
+        __width (int): width of image
+        __number_of_channels (int): number of color channels of image
+        __current_rgb (np.ndarray): current rgb image
+        __gaussians (list): list with Gaussian() objects, describing gaussians of pixel
+        __mask (np.ndarray): mask, that displays the area of moving object
+    """
+
+    def __init__(self, rgb_im, number_of_gaussians=2, learning_rate_alfa=0.025):
         self.__number_of_gaussians = number_of_gaussians
         self.__learning_rate_alfa = learning_rate_alfa
-        self.__threshold = threshold
 
         self.__height = rgb_im.shape[0]
         self.__width = rgb_im.shape[1]
@@ -643,35 +442,47 @@ class RGB_MoG:
         except:
             self.__number_of_channels = 1
 
-        self.__current_rgb = rgb_im * 255
+        self.__current_rgb = rgb_im
         self.__gaussians = []
         self.__mask = np.zeros([self.__height, self.__width])
 
         self.initialization()
 
     def initialization(self):
+        """Creating of gaussians
 
-        mean = np.zeros([self.__number_of_gaussians, self.__number_of_channels])
+        For each channel of the pixel mean is a color of image; variances are ones; weights are 1/number_of_gaussians;
+        ranking is a sequence.
+        """
         variance = np.ones([self.__number_of_gaussians])
         weight = np.ones([self.__number_of_gaussians]) / self.__number_of_gaussians
         initial_ranking = np.arange(self.__number_of_gaussians)
 
         for h in range(self.__height):
             for w in range(self.__width):
+                mean = np.zeros([self.__number_of_gaussians, self.__number_of_channels]) + self.__current_rgb[h, w]
                 self.__gaussians.append(
-                    Gaussian(index=np.asarray([h, w]), luminance_mean=np.asarray([]), color_mean=mean,
-                             depth_mean=np.asarray([]), luminance_variance=np.asarray([]), color_variance=variance,
-                             depth_variance=np.asarray([]), weight=weight, ranking=initial_ranking))
+                    Gaussian(index=np.asarray([h, w]), color_mean=mean, color_variance=variance, weight=weight,
+                             ranking=initial_ranking))
 
     def set_raking(self, gauss):
+        """Sets rank
+
+        Calculating rating for each gaussian
+
+        Arguments:
+            gauss (Gaussian): gaussians of current pixel
+        """
         gauss.ranking = np.argsort(-gauss.weight / gauss.color_variance)
 
-    def get_ranking_mask(self, gauss):
-        ranked_weight = np.cumsum(gauss.weight[gauss.ranking])
-        ranking_mask = np.choose(gauss.ranking, (ranked_weight < self.__threshold))
-        return ranking_mask
-
     def probability(self, gauss):
+        """Gaussian probability density
+
+        Calculating probability of each gaussian and their matching (possibility of matching current color to gaussian.
+
+        Arguments:
+            gauss (Gaussian): gaussians of current pixel
+        """
         dist_square = np.sum((self.__current_rgb[gauss.index[0], gauss.index[1]] - gauss.color_mean) ** 2,
                              axis=1) / gauss.color_variance
         dist = np.sqrt(dist_square)
@@ -682,6 +493,16 @@ class RGB_MoG:
         return matching_criterion, probability
 
     def update(self, gauss, matching_criterion, probability):
+        """Updating gaussian parameters
+
+        Updating of mean, variance and weight of gaussian if color matches to them; else mean is current color, variance
+        is a list of 4 and weight is becoming less.
+
+        Arguments:
+            gauss (Gaussian): gaussians of current pixel
+            matching_criterion (np.ndarray): array of matching colors to gaussians
+            probability (np.ndarray): array of probability densities for every gaussian
+        """
 
         learning_rate_ro = self.__learning_rate_alfa * probability
 
@@ -690,56 +511,72 @@ class RGB_MoG:
 
         gauss.weight = np.where(update_mask == 1,
                                 (1 - self.__learning_rate_alfa) * gauss.weight + self.__learning_rate_alfa,
-                                gauss.weight)
-        gauss.weight = np.where(update_mask == 0, (1 - self.__learning_rate_alfa) * gauss.weight, gauss.weight)
-        gauss.weight = np.where(update_mask == -1, 0.0001, gauss.weight)
-
-        gauss.color_mean = np.where(update_mask == 1,
-                                    (1 - learning_rate_ro) * gauss.color_mean + learning_rate_ro * self.__current_rgb[
-                                        gauss.index[0], gauss.index[1]], gauss.color_mean)
-        gauss.color_mean = np.where(update_mask == -1, self.__current_rgb[gauss.index[0], gauss.index[1]],
-                                    gauss.color_mean)
+                                (1 - self.__learning_rate_alfa) * gauss.weight)
 
         gauss.color_variance = np.where(update_mask == 1, np.sqrt(
             (1 - learning_rate_ro) * (gauss.color_variance ** 2) + learning_rate_ro * (
                 np.sum(np.subtract(self.__current_rgb[gauss.index[0], gauss.index[1]], gauss.color_mean) ** 2))),
-                                        gauss.color_variance)
-        gauss.color_variance = np.where(update_mask == -1, 3 + np.ones(self.__number_of_gaussians),
-                                        gauss.color_variance)
+                                        3 + np.ones(self.__number_of_gaussians))
 
-    def make_mask(self, matching_criterion, ranking_mask):
-        update_status = np.bitwise_or.reduce(matching_criterion, axis=0)
+        for i in range(self.__number_of_gaussians):
+            if update_mask[i] == 1:
+                gauss.color_mean[i] = (1 - learning_rate_ro[i]) * gauss.color_mean[i] + learning_rate_ro[i] * \
+                                      self.__current_rgb[gauss.index[0], gauss.index[1]]
+            else:
+                gauss.color_mean[i] = self.__current_rgb[gauss.index[0], gauss.index[1]]
 
-        background = 0
-        foreground = 255
-        res = np.where(not update_status, foreground, background)
+    def make_mask(self, matching_criterion):
+        """Setting a pixel for mask
 
-        n = np.bitwise_and(update_status, ranking_mask)
-        n = np.bitwise_or.reduce(matching_criterion, axis=0)
-        res = np.where(n, background, foreground)
+        Set pixel white if pixel is for foreground
+
+        Arguments:
+            matching_criterion (np.ndarray): mask for moving objects
+        """
+        matching = np.bitwise_or.reduce(matching_criterion, axis=0)
+        res = np.where(matching, 0, 255)
 
         return res
 
     def set_mask(self, rgb_im):
+        """Making mask of moving object
+
+        For each pixel of rgb image calculate if it foreground or background
+
+        Arguments:
+            rgb_im (np.ndarray): array of image
+        """
         self.__current_rgb = rgb_im
         for gauss in self.__gaussians:
             self.set_raking(gauss)
-            ranking_mask = self.get_ranking_mask(gauss)
             matching_criterion, probability = self.probability(gauss)
             self.update(gauss, matching_criterion, probability)
-            self.__mask[gauss.index[0], gauss.index[1]] = self.make_mask(matching_criterion, ranking_mask)
+            self.__mask[gauss.index[0], gauss.index[1]] = self.make_mask(matching_criterion)
         return self.__mask
 
 
 class RGBD_MoG:
 
-    def __init__(self, rgb_im, depth_im, number_of_gaussians=3, learning_rate=.025):
+    def __init__(self, rgb_im, depth_im, number_of_gaussians=3, learning_rate_alfa=.025, depth_reliability_ro=0.2,
+                 matching_rate_beta=2.5, luminance_min=16, depth_threshold=0.01, reliability_threshold=.4):
 
         self.__number_of_gaussians = number_of_gaussians
-        self.__learning_rate = learning_rate
+        self.__learning_rate_alfa = learning_rate_alfa
+        self.__depth_reliability_ro = depth_reliability_ro
+        self.__matching_rate_beta = matching_rate_beta
+        self.__luminance_min = luminance_min
+        self.__depth_threshold = depth_threshold
+        self.__reliability_threshold = reliability_threshold
 
-        self.__current_yuv = self.RGB_to_YUV(rgb_im * 255)
-        self.__current_rgb = rgb_im * 255
+        self.__height = rgb_im.shape[0]
+        self.__width = rgb_im.shape[1]
+        try:
+            self.__number_of_channels = rgb_im.shape[2] + 1
+        except:
+            print("There must be RGB image, not GreyScale")
+
+        self.__current_yuv = self.RGB_to_YUV(rgb_im)
+        self.__current_depth = depth_im
         self.__gaussians = []
         self.__mask = np.zeros_like(depth_im)
 
@@ -750,14 +587,6 @@ class RGBD_MoG:
         T-REC-T.871 recommendation
         code from https://gist.github.com/Quasimondo/c3590226c924a06b276d606f4f189639
         """
-
-        # for row in self.__current_rgb:
-        #     for column in row:
-        #         r, g, b = column[0], column[1], column[2]
-        #         y = 0.299*r + 0.587*g+0.114*b
-        #         c_b = 0.5*(b-y)/0.886 + 128
-        #         c_r = 0.5*(r-y)/0.701 + 128
-
         m = np.array([[0.29900, -0.16874, 0.50000],
                       [0.58700, -0.33126, -0.41869],
                       [0.11400, 0.50000, -0.08131]])
@@ -767,13 +596,147 @@ class RGBD_MoG:
         return yuv
 
     def initialization(self):
-        for i in range(self.__current_yuv.shape[0]):
-            for j in range(self.__current_yuv.shape[1]):
+
+        variance = np.ones([self.__number_of_gaussians])
+        weight = np.ones([self.__number_of_gaussians]) / self.__number_of_gaussians
+        initial_ranking = np.arange(self.__number_of_gaussians)
+
+        for h in range(self.__height):
+            for w in range(self.__width):
+                luminance_mean, color_mean, depth_mean = np.zeros([self.__number_of_gaussians]) + self.__current_yuv[
+                    h, w, 0], np.zeros([self.__number_of_gaussians, 2]) + self.__current_yuv[h, w, 1:], np.zeros(
+                    [self.__number_of_gaussians]) + self.__current_depth[h, w]
+                depth_observations = np.where(self.__current_depth[h, w] == 255, np.asarray([[0, 1]] * 3),
+                                              np.asarray([[1, 1]] * 3))
                 self.__gaussians.append(
-                    Gaussian([i, j], [[100, 100, 100]] * self.__number_of_gaussians, [36] * self.__number_of_gaussians,
-                             [36] * self.__number_of_gaussians, [36] * self.__number_of_gaussians,
-                             [1 / self.__number_of_gaussians] * self.__number_of_gaussians))
-        print(self.__gaussians)
+                    Gaussian(index=np.asarray([h, w]),
+                             luminance_mean=luminance_mean, color_mean=color_mean, depth_mean=depth_mean,
+                             luminance_variance=np.copy(variance), color_variance=np.copy(variance),
+                             depth_variance=np.copy(variance),
+                             weight=np.copy(weight), ranking=np.copy(initial_ranking),
+                             depth_observations=depth_observations))
+
+    def set_ranking(self, gauss):
+        gauss.ranking = np.argsort(-gauss.weight / gauss.luminance_variance)
+
+    def matching(self, gauss):
+        yuv_pixel = self.__current_yuv[gauss.index[0], gauss.index[1]]
+        depth_pixel = self.__current_depth[gauss.index[0], gauss.index[1]]
+        beta = self.__matching_rate_beta ** 2
+
+        depth_matching = np.bitwise_or((depth_pixel - gauss.depth_mean) ** 2 < beta * gauss.depth_variance,
+                                       np.bitwise_or(depth_pixel == 255, np.bitwise_not(
+                                           gauss.depth_observations[:, 0] / gauss.depth_observations[:,
+                                                                            1] > self.__depth_reliability_ro)))
+
+        # for i in range(self.__number_of_gaussians):
+        #     if (depth_pixel - gauss.depth_mean[i]) ** 2 > 0:
+        #         print(depth_pixel, gauss.depth_mean[i], depth_pixel - gauss.depth_mean[i], depth_pixel - gauss.depth_mean)
+        # depth_matching = (depth_pixel - gauss.depth_mean) ** 2 > beta/255 * gauss.depth_variance
+
+        color_condition_1 = np.bitwise_and(
+            gauss.luminance_mean > self.__luminance_min, yuv_pixel[0] > self.__luminance_min)
+        color_condition_2 = (yuv_pixel[0] - gauss.luminance_mean) ** 2 < beta * gauss.luminance_variance
+        color_condition_3 = np.sum((yuv_pixel[1:] - gauss.color_mean), axis=1) ** 2 < beta * gauss.color_variance
+        color_matching = np.where(color_condition_1, np.add(color_condition_2, color_condition_3),
+                                  color_condition_2)
+
+        matching_criterion = np.bitwise_and(depth_matching, color_matching)
+
+        return matching_criterion
+
+    def update(self, gauss, matching_criterion, number_of_observations):
+        yuv_pixel = self.__current_yuv[gauss.index[0], gauss.index[1]]
+        depth_pixel = self.__current_depth[gauss.index[0], gauss.index[1]]
+
+        if np.bitwise_or.reduce(matching_criterion):
+
+            gauss.luminance_variance = np.where(matching_criterion, (
+                    1 - self.__learning_rate_alfa) * gauss.luminance_variance + self.__learning_rate_alfa * (
+                                                        yuv_pixel[0] - gauss.luminance_mean) ** 2,
+                                                gauss.luminance_variance)
+
+            gauss.luminance_mean = np.where(matching_criterion,
+                                            (1 - self.__learning_rate_alfa) * gauss.luminance_mean +
+                                            self.__learning_rate_alfa * yuv_pixel[0], gauss.luminance_mean)
+
+            for i in range(self.__number_of_gaussians):
+                if matching_criterion[i]:
+                    gauss.color_variance[i] = (1 - self.__learning_rate_alfa) * gauss.color_variance[
+                        i] + self.__learning_rate_alfa * np.sum((yuv_pixel[1:] - gauss.color_mean[i]) ** 2)
+                    gauss.color_mean[i] = (1 - self.__learning_rate_alfa) * gauss.color_mean[
+                        i] + self.__learning_rate_alfa * yuv_pixel[1:]
+                    gauss.depth_observations[i] = [(1 - self.__learning_rate_alfa) * gauss.depth_observations[i, 0] +
+                                                   self.__learning_rate_alfa * (depth_pixel < 255),
+                                                   number_of_observations]
+
+            gauss.depth_variance = np.where(matching_criterion, (
+                    1 - self.__learning_rate_alfa) * gauss.depth_variance + self.__learning_rate_alfa * (
+                                                    depth_pixel - gauss.depth_mean) ** 2, gauss.depth_variance)
+            gauss.depth_mean = np.where(matching_criterion,
+                                        (1 - self.__learning_rate_alfa) * gauss.depth_mean +
+                                        self.__learning_rate_alfa * depth_pixel, gauss.depth_mean)
+
+            gauss.weight = np.where(matching_criterion, (
+                    1 - self.__learning_rate_alfa) * gauss.weight + self.__learning_rate_alfa * matching_criterion,
+                                    gauss.weight)
+        else:
+            index = gauss.ranking[-1]
+
+            gauss.luminance_mean[index] = yuv_pixel[0]
+            gauss.color_mean[index] = yuv_pixel[1:]
+            gauss.depth_mean[index] = depth_pixel
+
+            gauss.luminance_variance[index] = 1
+            gauss.color_variance[index] = 1
+            gauss.depth_variance[index] = 1
+
+            gauss.weight[index] = self.__learning_rate_alfa
+
+            gauss.depth_observations[index] = [self.__learning_rate_alfa * (depth_pixel < 255), number_of_observations]
+
+    def pixel_mask(self, gauss, matching_criterion):
+
+        max_depth = 0
+        depth_reliability = np.zeros(self.__number_of_gaussians)
+        for index in np.argsort(-gauss.depth_mean):
+            if self.__current_depth[gauss.index[0], gauss.index[1]] == 255:
+                depth_reliability = np.ones(self.__number_of_gaussians)
+                break
+            elif gauss.depth_observations[index, 0] / gauss.depth_observations[index, 1] > \
+                    self.__depth_reliability_ro or gauss.weight[index] > self.__depth_threshold:
+                if gauss.depth_mean[index] >= max_depth:
+                    depth_reliability[index] = 1
+                    max_depth = gauss.depth_mean[index]
+        depth_reliability = depth_reliability.astype(int)
+
+        threshold = 0
+        color_reliability = np.zeros(self.__number_of_gaussians)
+        for index in gauss.ranking:
+            while threshold < self.__reliability_threshold:
+                threshold += gauss.weight[index]
+                color_reliability[index] = 1
+        color_reliability = color_reliability.astype(int)
+
+        background = np.bitwise_or.reduce(np.bitwise_and(matching_criterion, color_reliability))
+        background = np.bitwise_or.reduce(np.bitwise_or(background, np.bitwise_and.reduce(depth_reliability)))
+        if background:
+            self.__mask[gauss.index[0], gauss.index[1]] = 0
+        else:
+            self.__mask[gauss.index[0], gauss.index[1]] = 255
+
+    def set_mask(self, rgb_im, depth_im):
+        self.__current_yuv = self.RGB_to_YUV(rgb_im)
+        self.__current_depth = depth_im
+        number_of_observations = self.__gaussians[0].depth_observations[0, 1] + 1
+
+        for gauss in self.__gaussians:
+            self.set_ranking(gauss)
+            matching_criterion = self.matching(gauss)
+            self.update(gauss, matching_criterion, number_of_observations)
+            self.pixel_mask(gauss, matching_criterion)
+
+        return self.__mask
 
 
 def color_distance(current_pixel, sample_pixel):
