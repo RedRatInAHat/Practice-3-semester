@@ -38,7 +38,7 @@ class FrameDifference:
         __mask (numpy array): mask, that displays the area of moving object
     """
 
-    def __init__(self, depth_im, rgb_im, rgb_threshold=0.3, depth_threshold=0.1):
+    def __init__(self, depth_im, rgb_im, rgb_threshold=0.3, depth_threshold=0.05):
         self.__current_depth = depth_im
         self.__current_rgb = rgb_im
         self.__previous_depth = np.empty_like(self.__current_depth)
@@ -76,7 +76,7 @@ class FrameDifference:
         """
         rgb_subtraction = self.__current_rgb - self.__previous_rgb
 
-        mask = np.empty_like(self.__current_depth)
+        mask = np.zeros_like(self.__current_depth)
         for i in range(rgb_subtraction.shape[0]):
             for j in range(rgb_subtraction.shape[1]):
                 if rgb_subtraction[i, j, 0] * rgb_subtraction[i, j, 0] + rgb_subtraction[i, j, 1] * rgb_subtraction[
@@ -87,49 +87,8 @@ class FrameDifference:
                     mask[i, j] = 0
         return mask
 
-    def region_growing(self, movement_mask):
-        """Region growing realization
-
-        Pixel, that was checked as "moving", with the largest value is choosing as seed. From that seed performing a
-        region growing - if value of neighbour pixels is close to the seed value they are adding to the region and the
-        next growing will be performing from these values.
-        Algorithm works until there are seeds.
-
-        Arguments:
-            movement_mask (np.array): a mask for seeds
-        Return:
-            mask (np.array): a mask of moving objects
-        """
-
-        seeds = movement_mask * self.__current_depth
-        done = np.zeros_like(seeds)
-
-        while not np.sum(seeds) == 0:
-            ind_i = math.floor(np.argmax(seeds) / self.__current_rgb.shape[1])
-            ind_j = np.argmax(seeds) - ind_i * self.__current_rgb.shape[1]
-            mask = np.zeros_like(self.__current_depth)
-
-            q = deque()
-
-            q.append([ind_i, ind_j])
-            seeds[ind_i, ind_j] = 0
-            done[ind_i, ind_j] = 1
-            mask[ind_i, ind_j] = 1
-
-            while q:
-                ind = q.popleft()
-                for i in range(ind[0] - 1, ind[0] + 2):
-                    for j in range(ind[1] - 1, ind[1] + 2):
-                        if -1 < i < self.__current_depth.shape[0] and -1 < j < self.__current_depth.shape[1]:
-                            if not done[i, j] == 1 and not self.__current_depth[i, j] > 1:
-                                if math.fabs(self.__current_depth[i, j] - self.current_depth[
-                                    ind[0], ind[1]]) < self.__depth_threshold:
-                                    q.append([i, j])
-                                    seeds[i, j] = 0
-                                    done[i, j] = 1
-                                    mask[i, j] = 1
-            if np.sum(mask) > 100:
-                self.__mask.append(mask)
+    def create_mask(self, movement_mask):
+        self.__mask = region_growing(movement_mask, self.__current_depth, self.__depth_threshold)
         return self.__mask
 
 
@@ -625,14 +584,9 @@ class RGBD_MoG:
         beta = self.__matching_rate_beta ** 2
 
         depth_matching = np.bitwise_or((depth_pixel - gauss.depth_mean) ** 2 < beta * gauss.depth_variance,
-                                       np.bitwise_or(depth_pixel == 255, np.bitwise_not(
-                                           gauss.depth_observations[:, 0] / gauss.depth_observations[:,
-                                                                            1] > self.__depth_reliability_ro)))
-
-        # for i in range(self.__number_of_gaussians):
-        #     if (depth_pixel - gauss.depth_mean[i]) ** 2 > 0:
-        #         print(depth_pixel, gauss.depth_mean[i], depth_pixel - gauss.depth_mean[i], depth_pixel - gauss.depth_mean)
-        # depth_matching = (depth_pixel - gauss.depth_mean) ** 2 > beta/255 * gauss.depth_variance
+                                       np.bitwise_or(depth_pixel == 255,
+                                                     gauss.depth_observations[:, 0] / gauss.depth_observations[:,
+                                                                                      1] < self.__depth_reliability_ro))
 
         color_condition_1 = np.bitwise_and(
             gauss.luminance_mean > self.__luminance_min, yuv_pixel[0] > self.__luminance_min)
@@ -700,11 +654,11 @@ class RGBD_MoG:
         max_depth = 0
         depth_reliability = np.zeros(self.__number_of_gaussians)
         for index in np.argsort(-gauss.depth_mean):
-            if self.__current_depth[gauss.index[0], gauss.index[1]] == 255:
-                depth_reliability = np.ones(self.__number_of_gaussians)
-                break
-            elif gauss.depth_observations[index, 0] / gauss.depth_observations[index, 1] > \
-                    self.__depth_reliability_ro or gauss.weight[index] > self.__depth_threshold:
+            # if self.__current_depth[gauss.index[0], gauss.index[1]] == 255:
+            #     depth_reliability = np.ones(self.__number_of_gaussians)
+            #     break
+            if gauss.depth_observations[index, 0] / gauss.depth_observations[index, 1] > \
+                    self.__depth_reliability_ro or gauss.weight[index] > self.__depth_threshold < 255:
                 if gauss.depth_mean[index] >= max_depth:
                     depth_reliability[index] = 1
                     max_depth = gauss.depth_mean[index]
@@ -718,8 +672,14 @@ class RGBD_MoG:
                 color_reliability[index] = 1
         color_reliability = color_reliability.astype(int)
 
-        background = np.bitwise_or.reduce(np.bitwise_and(matching_criterion, color_reliability))
-        background = np.bitwise_or.reduce(np.bitwise_or(background, np.bitwise_and.reduce(depth_reliability)))
+        pixel_reliability = np.bitwise_and(self.__current_depth[gauss.index[0], gauss.index[1]] == 255,
+                                           self.__current_yuv[
+                                               gauss.index[0], gauss.index[1], 0] <= self.__luminance_min)
+
+        background = np.bitwise_or(np.bitwise_or.reduce(np.bitwise_and(matching_criterion, color_reliability)),
+                                   np.bitwise_or.reduce(np.bitwise_and(matching_criterion, depth_reliability)))
+        background = np.bitwise_or(background, pixel_reliability)
+        # background = np.bitwise_or.reduce(np.bitwise_or(background, np.bitwise_and.reduce(depth_reliability)))
         if background:
             self.__mask[gauss.index[0], gauss.index[1]] = 0
         else:
@@ -772,3 +732,53 @@ def get_random_neighbour(index, resolution, area):
     while neighbour_index < 0 or neighbour_index >= resolution:
         neighbour_index = index + np.random.choice(area)
     return neighbour_index
+
+
+def region_growing(movement_mask, current_depth, depth_threshold=0.05, significant_number_of_points=100):
+    """Region growing realization
+
+    Pixel, that was checked as "moving", with the largest value is choosing as seed. From that seed performing a
+    region growing - if value of neighbour pixels is close to the seed value they are adding to the region and the
+    next growing will be performing from these values.
+    Algorithm works until there are seeds.
+
+    Arguments:
+        movement_mask (np.array): a mask for seeds
+        current_depth (np.ndarray): array with current depth values
+        depth_threshold (np.ndarray): threshold for depth difference which points on smothness of object
+        significant_number_of_points (int): number of points which indicates, that found object isn't a noise
+    Return:
+        mask (np.array): a mask of moving objects
+    """
+    masks = []
+    seeds = movement_mask * current_depth
+    print(len(seeds))
+    done = np.zeros_like(seeds)
+
+    while not np.sum(seeds) == 0:
+        ind_i = math.floor(np.argmax(seeds) / current_depth.shape[1])
+        ind_j = np.argmax(seeds) - ind_i * current_depth.shape[1]
+        mask = np.zeros_like(current_depth)
+
+        q = deque()
+
+        q.append([ind_i, ind_j])
+        seeds[ind_i, ind_j] = 0
+        done[ind_i, ind_j] = 1
+        mask[ind_i, ind_j] = 1
+
+        while q:
+            ind = q.popleft()
+            for i in range(ind[0] - 1, ind[0] + 2):
+                for j in range(ind[1] - 1, ind[1] + 2):
+                    if -1 < i < current_depth.shape[0] and -1 < j < current_depth.shape[1]:
+                        if not done[i, j] == 1 and not current_depth[i, j] >=1:
+                            if math.fabs(
+                                    current_depth[i, j] - current_depth[ind[0], ind[1]]) < depth_threshold:
+                                q.append([i, j])
+                                seeds[i, j] = 0
+                                done[i, j] = 1
+                                mask[i, j] = 1
+        if np.sum(mask) > significant_number_of_points:
+            masks.append(mask)
+    return masks

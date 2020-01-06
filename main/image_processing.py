@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 
-def calculate_point_cloud(rgb, depth, cam_angle, near_clipping_plane, far_clipping_plane, step=1):
+def calculate_point_cloud(rgb, depth, cam_angle=57, near_clipping_plane=0.1, far_clipping_plane=3.5, step=1):
     """Calculation of point cloud from images arrays and kinect properties
 
     Arguments:
@@ -103,8 +103,8 @@ def save_image(input_image, path_to_image, frame_number=0, image_name="unknown")
         image = Image.fromarray(np.uint8(input_image * 255), 'L')
     elif input_image.ndim == 3:
         image = Image.fromarray(np.uint8(input_image * 255))
-    image = image.rotate(180)
-    image = ImageOps.mirror(image)
+    # image = image.rotate(180)
+    # image = ImageOps.mirror(image)
     image.save(path_to_image + "/" + image_name + str(frame_number) + ".png")
 
 
@@ -120,10 +120,10 @@ def load_image(path_to_image, name_of_image, mode="RGB"):
 
 
 if __name__ == "__main__":
-    # create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 3, resolution_y=48 * 3,
-    #                          path_to_images="falling ball")
+    create_dataset_from_vrep(5, time_interval=0.5, resolution_x=64 * 2, resolution_y=48 * 2,
+                             path_to_images="falling balls and cylinder")
 
-    create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 2, resolution_y=48 * 2,
-                             path_to_images="falling ball 64x2_48x2")
-
-    load_image("falling ball", "depth_0.png", "depth")
+    # create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 2, resolution_y=48 * 2,
+    #                          path_to_images="falling ball 64x2_48x2")
+    #
+    # load_image("falling ball", "depth_0.png", "depth")

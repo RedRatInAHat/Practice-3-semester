@@ -234,6 +234,24 @@ class PointsObject:
         pcd.colors = o3d.utility.Vector3dVector(rgb)
         o3d.io.write_point_cloud(full_path, pcd)
 
+    def get_normals(self):
+        import open3d as o3d
+
+        xyz = np.empty([self.number_of_active_points(), 3])
+        rgb = np.empty([self.number_of_active_points(), 3])
+        counter = 0
+
+        for i in range(self.number_of_all_points()):
+            if self.__active_points[i]:
+                xyz[counter] = self.__xyz[i]
+                rgb[counter] = self.__rgb[i]
+                counter += 1
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(xyz)
+        pcd.colors = o3d.utility.Vector3dVector(rgb)
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        return np.asarray(pcd.normals)
+
 
 if __name__ == "__main__":
     test = PointsObject()
