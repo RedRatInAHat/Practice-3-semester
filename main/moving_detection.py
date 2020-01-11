@@ -752,7 +752,6 @@ def region_growing(movement_mask, current_depth, depth_threshold=0.05, significa
     """
     masks = []
     seeds = movement_mask * current_depth
-    print(len(seeds))
     done = np.zeros_like(seeds)
 
     while not np.sum(seeds) == 0:

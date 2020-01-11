@@ -1,5 +1,6 @@
 import numpy as np
 from PIL import Image, ImageOps
+import os
 
 
 def calculate_point_cloud(rgb, depth, cam_angle=57, near_clipping_plane=0.1, far_clipping_plane=3.5, step=1):
@@ -19,35 +20,30 @@ def calculate_point_cloud(rgb, depth, cam_angle=57, near_clipping_plane=0.1, far
     """
     from math import tan, atan, radians
 
-    xyzrgb = []
-
     depth_amplitude = far_clipping_plane - near_clipping_plane
-
-    x_resolution = depth.shape[1]
-    y_resolution = depth.shape[0]
-
+    x_resolution, y_resolution = depth.shape[1], depth.shape[0]
     x_half_angle = radians(cam_angle) / 2.
     y_half_angle = radians(cam_angle) / 2. * y_resolution / x_resolution
 
     max_dist = 1.
     min_dist = near_clipping_plane * max_dist / far_clipping_plane
 
-    for i in range(0, x_resolution, step):
-        x_angle = atan((x_resolution / 2.0 - i - 0.5) / (x_resolution / 2.0) * tan(x_half_angle))
-        for j in range(0, y_resolution, step):
-            y_angle = atan((j - y_resolution / 2.0 + 0.5) / (y_resolution / 2.0) * tan(y_half_angle))
-            point_depth = depth[j, i]
-            if max_dist > point_depth > min_dist:
-                z = near_clipping_plane + point_depth * depth_amplitude
-                x = tan(x_angle) * z
-                y = tan(y_angle) * z
+    x = np.asarray((x_resolution / 2.0 - np.arange(x_resolution) - 0.5) / (x_resolution / 2.0) * tan(x_half_angle))
+    y = np.asarray(((np.arange(y_resolution) - y_resolution / 2.0 + 0.5) / (y_resolution / 2.0) * tan(y_half_angle)))
+    z = np.where(np.logical_and(np.asarray(depth) > min_dist, np.asarray(depth) < max_dist),
+                 [near_clipping_plane + depth * depth_amplitude], None)[0]
+    xyzrgb = np.zeros([y_resolution, x_resolution, 6])
+    xyzrgb[:, :, 0] = x
+    xyzrgb[:, :, 1] = (xyzrgb[:, :, 1].T + y).T
+    xyzrgb[:, :, 2] = z
+    xyzrgb[:, :, 3:] = rgb
 
-                xyzrgb.append([0] * 6)
-                xyzrgb[-1] = [x, y, z, rgb[j, i, 0], rgb[j, i, 1], rgb[j, i, 2]]
+    xyzrgb_flat = xyzrgb.reshape(y_resolution * x_resolution, 6)
+    xyzrgb_flat = xyzrgb_flat[~np.isnan(xyzrgb_flat[:, 2])]
+    xyzrgb_flat[:, 0] *= xyzrgb_flat[:, 2]
+    xyzrgb_flat[:, 1] *= -xyzrgb_flat[:, 2]
 
-    xyzrgb = np.asarray(xyzrgb)
-
-    return xyzrgb[:, :3], xyzrgb[:, 3:6]
+    return xyzrgb_flat[:, :3], xyzrgb_flat[:, 3:6]
 
 
 def create_dataset_from_vrep(number_of_frames, time_interval=0, resolution_x=640, resolution_y=480, path_to_images=""):
@@ -99,6 +95,9 @@ def save_image(input_image, path_to_image, frame_number=0, image_name="unknown")
     is a rotation and mirror.
     """
 
+    if not os.path.exists(path_to_image):
+        os.mkdir(path_to_image)
+
     if input_image.ndim == 2:
         image = Image.fromarray(np.uint8(input_image * 255), 'L')
     elif input_image.ndim == 3:
@@ -120,10 +119,12 @@ def load_image(path_to_image, name_of_image, mode="RGB"):
 
 
 if __name__ == "__main__":
-    create_dataset_from_vrep(5, time_interval=0.5, resolution_x=64 * 2, resolution_y=48 * 2,
-                             path_to_images="falling balls and cylinder")
+    # create_dataset_from_vrep(5, time_interval=0.5, resolution_x=64 * 2, resolution_y=48 * 2,
+    #                          path_to_images="falling balls and cylinder")
 
     # create_dataset_from_vrep(5, time_interval=0.3, resolution_x=64 * 2, resolution_y=48 * 2,
     #                          path_to_images="falling ball 64x2_48x2")
     #
-    # load_image("falling ball", "depth_0.png", "depth")
+    rgb_im = load_image("falling ball", "rgb_0.png")
+    depth_im = load_image("falling ball", "depth_0.png", "depth")
+    calculate_point_cloud(rgb_im/255, depth_im/255)
