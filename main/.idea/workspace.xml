@@ -23,28 +23,7 @@
   <component name="PropertiesComponent">
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunManager" selected="Python.NIR 3 semester">
-    <configuration name="Background_Subtraction" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Ply_to_cloud" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-subtraction-of-a-CCTV-video-master" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-subtraction-of-a-CCTV-video-master/Background_Subtraction.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
+  <component name="RunManager" selected="Python.Practice 3 semester">
     <configuration name="NIR 3 semester" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -66,28 +45,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="loop" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="Ply_to_cloud" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master/loop.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="main (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="Practice 3 semester" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -99,7 +57,49 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Practice 3 semester.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="descriptors" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="Ply_to_cloud" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/descriptors.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="image_processing" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Ply_to_cloud" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/image_processing.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -116,11 +116,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master" />
+      <option name="WORKING_DIRECTORY" value="$USER_HOME$/Research work (moving objects)/Чужой код/Background-Subtraction-master" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../../Research work (moving objects)/Чужой код/Background-Subtraction-master/main.py" />
+      <option name="SCRIPT_NAME" value="$USER_HOME$/Research work (moving objects)/Чужой код/Background-Subtraction-master/main.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -131,11 +131,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.Practice 3 semester" />
+        <item itemvalue="Python.descriptors" />
+        <item itemvalue="Python.image_processing" />
         <item itemvalue="Python.NIR 3 semester" />
         <item itemvalue="Python.main" />
-        <item itemvalue="Python.main (1)" />
-        <item itemvalue="Python.loop" />
-        <item itemvalue="Python.Background_Subtraction" />
       </list>
     </recent_temporary>
   </component>
@@ -164,43 +164,54 @@
     </task>
     <servers />
   </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.m" />
+  </component>
   <component name="WindowStateProjectService">
+    <state x="275" y="23" key="#Notifications" timestamp="1578391645725">
+      <screen x="0" y="0" width="1366" height="728" />
+    </state>
+    <state x="275" y="23" key="#Notifications/0.0.1366.728@0.0.1366.728" timestamp="1578391645725" />
     <state x="708" y="322" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1577559768543">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="708" y="322" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1920.1040@0.0.1920.1040" timestamp="1577559768543" />
-    <state width="1898" height="276" key="GridCell.Tab.0.bottom" timestamp="1577601808503">
+    <state width="1898" height="281" key="GridCell.Tab.0.bottom" timestamp="1578941697878">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
-    <state width="1898" height="276" key="GridCell.Tab.0.center" timestamp="1577601808503">
+    <state width="672" height="162" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1578391652823" />
+    <state width="1898" height="281" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1578941697878" />
+    <state width="1898" height="281" key="GridCell.Tab.0.center" timestamp="1578941697878">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
-    <state width="1898" height="276" key="GridCell.Tab.0.left" timestamp="1577601808503">
+    <state width="672" height="162" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1578391652823" />
+    <state width="1898" height="281" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1578941697878" />
+    <state width="1898" height="281" key="GridCell.Tab.0.left" timestamp="1578941697878">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
-    <state width="1898" height="276" key="GridCell.Tab.0.right" timestamp="1577601808503">
+    <state width="672" height="162" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1578391652822" />
+    <state width="1898" height="281" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1578941697878" />
+    <state width="1898" height="281" key="GridCell.Tab.0.right" timestamp="1578941697878">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="276" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577601808503" />
-    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1577544902740">
+    <state width="672" height="162" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1578391652823" />
+    <state width="1898" height="281" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1578941697878" />
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1577612913734">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
-    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1577544902740">
+    <state width="1898" height="341" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1577612913734" />
+    <state width="1898" height="341" key="GridCell.Tab.1.center" timestamp="1577612913734">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
-    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1577544902740">
+    <state width="1898" height="341" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1577612913734" />
+    <state width="1898" height="341" key="GridCell.Tab.1.left" timestamp="1577612913734">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
-    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1577544902740">
+    <state width="1898" height="341" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1577612913734" />
+    <state width="1898" height="341" key="GridCell.Tab.1.right" timestamp="1577612913734">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577544902740" />
+    <state width="1898" height="341" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1577612913734" />
     <state x="461" y="151" key="SettingsEditor" timestamp="1576421591409">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -209,10 +220,11 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="681" y="250" width="540" height="524" key="StructurePopup/0.0.1920.1040@0.0.1920.1040" timestamp="1576997348781" />
-    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1577519396931">
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1578939179310">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1577519396931" />
+    <state x="466" y="239" key="com.intellij.ide.util.TipDialog/0.0.1366.728@0.0.1366.728" timestamp="1578390656524" />
+    <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1578939179310" />
     <state x="623" y="225" width="672" height="678" key="search.everywhere.popup" timestamp="1576431920046">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>

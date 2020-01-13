@@ -36,137 +36,105 @@ def try_vrep_connection():
 
 
 def try_frame_difference():
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
+    depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
+    start = time.time()
+    frame_difference = FrameDifference(depth_im/255, rgb_im/255, 0.3, 0.005)
+    print("initialization: ", time.time() - start)
 
-    client_id = vrep_functions.vrep_connection()
-    kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
-    kinect_depth_id = vrep_functions.get_object_id(client_id, 'kinect_depth')
-    vrep_functions.vrep_change_properties(client_id, kinect_rgb_id, 'vision_sensor_resolution_x', resolution_x)
-    vrep_functions.vrep_change_properties(client_id, kinect_rgb_id, 'vision_sensor_resolution_y', resolution_y)
-    vrep_functions.vrep_change_properties(client_id, kinect_depth_id, 'vision_sensor_resolution_x', resolution_x)
-    vrep_functions.vrep_change_properties(client_id, kinect_depth_id, 'vision_sensor_resolution_y', resolution_y)
-    vrep_functions.vrep_start_sim(client_id)
-    depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
-
-    frame_difference = FrameDifference(depth_im, rgb_im, 0.3, 0.005)
-
-    for i in range(2):
-        depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
+    for i in range(5):
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
+        depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i) + ".png", "depth")
 
         start = time.time()
 
-        frame_difference.current_depth = depth_im
-        frame_difference.current_rgb = rgb_im
+        frame_difference.current_depth = depth_im/255
+        frame_difference.current_rgb = rgb_im/255
         mask = frame_difference.subtraction_mask()
-        mask = frame_difference.region_growing(mask)
+        mask = frame_difference.create_mask(mask)
 
         print(time.time() - start)
 
         mask = mask * 255
 
         all_masks = np.zeros_like(depth_im)
-        for i in range(len(mask)):
-            all_masks += mask[i]
-
-        # cv2.imshow("image", all_masks);
-        # cv2.waitKey();
-
-    vrep_functions.vrep_stop_sim(client_id)
+        all_masks = all_masks.astype(float)
+        for j in range(len(mask)):
+            all_masks += mask[j].astype(float)
+        image_processing.save_image(all_masks/255, "Results/Frame difference", i, "mask")
 
 
 def try_ViBE():
-
-    client_id = vrep_functions.vrep_connection()
-    kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
-    kinect_depth_id = vrep_functions.get_object_id(client_id, 'kinect_depth')
-    vrep_functions.vrep_change_properties(client_id, kinect_rgb_id, 'vision_sensor_resolution_x', resolution_x)
-    vrep_functions.vrep_change_properties(client_id, kinect_rgb_id, 'vision_sensor_resolution_y', resolution_y)
-    vrep_functions.vrep_start_sim(client_id)
-    _, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
-
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
     start = time.time()
-    vibe = ViBЕ(rgb_im=rgb_im, number_of_samples=10, threshold_r=20 / 255, time_factor=16)
-    print(time.time() - start)
-
-    for i in range(3):
-        _, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
-        start = time.time()
-        vibe.current_rgb = rgb_im
-        vibe.set_mask()
-        print(time.time() - start)
-        mask = vibe.mask
-        mask *= 255
-        cv2.imshow("image", mask)
-        if cv2.waitKey(1) and 0xff == ord('q'):
-            cv2.destroyAllWindows()
-    vrep_functions.vrep_stop_sim(client_id)
-
-
-def try_DEVB():
-
-    client_id = vrep_functions.vrep_connection()
-    kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
-    kinect_depth_id = vrep_functions.get_object_id(client_id, 'kinect_depth')
-    vrep_functions.vrep_change_properties(client_id, kinect_rgb_id, 'vision_sensor_resolution_x', resolution_x)
-    vrep_functions.vrep_change_properties(client_id, kinect_rgb_id, 'vision_sensor_resolution_y', resolution_y)
-    vrep_functions.vrep_change_properties(client_id, kinect_depth_id, 'vision_sensor_resolution_x', resolution_x)
-    vrep_functions.vrep_change_properties(client_id, kinect_depth_id, 'vision_sensor_resolution_y', resolution_y)
-    vrep_functions.vrep_start_sim(client_id)
-    depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
-
-    start = time.time()
-    devb = DEVB(rgb_im=rgb_im, depth_im=depth_im, number_of_samples=10, time_factor=16)
+    vibe = ViBЕ(rgb_im=rgb_im/255, number_of_samples=10, threshold_r=20 / 255, time_factor=16)
     print(time.time() - start)
 
     for i in range(5):
-        depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
+
         start = time.time()
-        devb.set_images(rgb_im, depth_im)
+
+        vibe.current_rgb = rgb_im/255
+        vibe.set_mask()
+        print(time.time() - start)
+
+        mask = vibe.mask
+        image_processing.save_image(mask, "Results/ViBE", i, "mask")
+
+
+def try_DEVB():
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
+    depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
+    start = time.time()
+    devb = DEVB(rgb_im=rgb_im/255, depth_im=depth_im/255, number_of_samples=10, time_factor=16)
+    print(time.time() - start)
+
+    for i in range(5):
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
+        depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i) + ".png", "depth")
+
+        start = time.time()
+        devb.set_images(rgb_im/255, depth_im/255)
         devb.set_mask()
         print(time.time() - start)
         mask = devb.mask
-        mask *= 255
-        cv2.imshow("image", mask)
-        if cv2.waitKey(1) and 0xff == ord('q'):
-            cv2.destroyAllWindows()
-    vrep_functions.vrep_stop_sim(client_id)
+
+        image_processing.save_image(mask, "Results/DEVB", i, "mask")
 
 
 def try_RGB_MoG():
 
-    rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(0) + ".png")
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
     start = time.time()
     mog = RGB_MoG(rgb_im, number_of_gaussians=3)
     print("initialization: ", time.time() - start)
     for i in range(5):
-        rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(i) + ".png")
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
         start = time.time()
         mask = mog.set_mask(rgb_im)
         print("frame updating: ", time.time() - start)
-        cv2.imshow("original", rgb_im)
-        cv2.imshow("image", mask)
-        cv2.waitKey(0)
+        image_processing.save_image(mask/255, "Results/RGB MoG", i, "mask")
 
 def try_RGBD_MoG():
-    rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(0) + ".png")
-    depth_im = image_processing.load_image("falling ball 64x2_48x2", "depth_" + str(0) + ".png", "depth")
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
+    depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
     start = time.time()
     mog = RGBD_MoG(rgb_im, depth_im, number_of_gaussians=3)
     print("initialization: ", time.time() - start)
     for i in range(5):
-        rgb_im = image_processing.load_image("falling ball 64x2_48x2", "rgb_" + str(i) + ".png")
-        depth_im = image_processing.load_image("falling ball 64x2_48x2", "depth_" + str(i) + ".png", "depth")
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
+        depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i) + ".png", "depth")
         start = time.time()
         mask = mog.set_mask(rgb_im, depth_im)
         print("frame updating: ", time.time() - start)
-        image = np.concatenate((rgb_im, cv2.cvtColor(mask,cv2.COLOR_GRAY2RGB)), axis=1)
-        cv2.imshow("image", image)
-        cv2.waitKey(0)
+        image_processing.save_image(mask/255, "Results/RGBD MoG", i, "mask")
 
 
 if __name__ == "__main__":
     # try_vrep_connection()
-    # try_frame_difference()
+    try_frame_difference()
     # try_ViBE()
     # try_DEVB()
     # try_RGB_MoG()
-    try_RGBD_MoG()
+    # try_RGBD_MoG()

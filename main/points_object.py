@@ -14,8 +14,8 @@ class PointsObject:
     """
 
     def __init__(self):
-        self.__xyz = np.empty([0, 3])
-        self.__rgb = np.empty([0, 3])
+        self.__xyz = np.zeros([0, 3])
+        self.__rgb = np.zeros([0, 3])
         self.__visible = True
         self.__moving = False
         self.__active_points = np.empty([0])
@@ -72,16 +72,8 @@ class PointsObject:
 
     def get_points(self):
         """Returns coordinates and colors of active object's points"""
-        xyz = np.empty([self.number_of_active_points(), 3])
-        rgb = np.empty([self.number_of_active_points(), 3])
-        counter = 0
-
-        for i in range(self.number_of_all_points()):
-            if self.__active_points[i]:
-                xyz[counter] = self.__xyz[i]
-                rgb[counter] = self.__rgb[i]
-                counter += 1
-
+        xyz = self.__xyz[self.__active_points == True]
+        rgb = self.__rgb[self.__active_points == True]
         return xyz, rgb
 
     @property
@@ -128,8 +120,7 @@ class PointsObject:
         Arguments:
             distance (numpy.array): distance in xyz format according to which points must be moved
         """
-        for i in range(self.__xyz.shape[0]):
-            self.__xyz[i] = self.__xyz[i] + distance
+        self.__xyz = self.__xyz + distance
 
     def scale(self, S):
         """Scaling of point cloud
@@ -151,11 +142,7 @@ class PointsObject:
         self.__xyz = A[:, :-1]
 
     def number_of_active_points(self):
-        counter = 0
-        for element in self.__active_points:
-            if element:
-                counter += 1
-        return counter
+        return np.sum(self.__active_points)
 
     def number_of_all_points(self):
         return self.__xyz.shape[0]
@@ -184,15 +171,15 @@ class PointsObject:
 
     def clear(self):
         """Erases points"""
-        self.__xyz = np.empty([0, 3])
-        self.__rgb = np.empty([0, 3])
-        self.__active_points = np.empty([0])
+        self.__xyz = np.zeros([0, 3])
+        self.__rgb = np.zeros([0, 3])
+        self.__active_points = np.zeros([0])
 
     def set_number_of_active_points(self, number):
         self.__active_points = self.choose_random_active(self.number_of_all_points(), number)
 
     def return_n_last_points(self, number):
-        return self.__xyz[-(number+1):-1], self.__rgb[-(number+1):-1]
+        return self.__xyz[-(number + 1):-1], self.__rgb[-(number + 1):-1]
 
     def save_all_points(self, path, name):
         """Saving all points cloud's points in .pcd format
@@ -218,21 +205,26 @@ class PointsObject:
         """
         import open3d as o3d
 
-        xyz = np.empty([self.number_of_active_points(), 3])
-        rgb = np.empty([self.number_of_active_points(), 3])
-        counter = 0
-
-        for i in range(self.number_of_all_points()):
-            if self.__active_points[i]:
-                xyz[counter] = self.__xyz[i]
-                rgb[counter] = self.__rgb[i]
-                counter += 1
+        xyz, rgb = self.get_points()
 
         full_path = path + "/" + name + ".pcd"
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(xyz)
         pcd.colors = o3d.utility.Vector3dVector(rgb)
         o3d.io.write_point_cloud(full_path, pcd)
+
+    def get_normals(self):
+        import open3d as o3d
+
+        xyz, rgb = self.get_points()
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(xyz)
+        pcd.colors = o3d.utility.Vector3dVector(rgb)
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        return np.asarray(pcd.normals)
+
+    def get_center(self):
+        return np.mean(self.__xyz, axis=0)
 
 
 if __name__ == "__main__":
