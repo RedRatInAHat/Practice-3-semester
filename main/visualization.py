@@ -92,8 +92,8 @@ def visualize(objects=None, points=None, points_color=None, lines=None, lines_po
     line_set_a.points = open3d.utility.Vector3dVector(points_axis)
     line_set_a.lines = open3d.utility.Vector2iVector(lines_axis)
     line_set_a.colors = open3d.utility.Vector3dVector(colors_axis)
-
     vis.add_geometry(line_set_a)
+
     vis.run()
 
 

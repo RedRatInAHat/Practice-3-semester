@@ -1,6 +1,6 @@
 import vrep_functions
 from points_object import PointsObject
-from moving_detection import FrameDifference, ViBЕ, DEVB, RGB_MoG, RGBD_MoG
+from moving_detection import FrameDifference, ViBЕ, DEVB, RGB_MoG, RGBD_MoG, Fast_RGBD_MoG
 import visualization
 import image_processing
 import numpy as np
@@ -39,7 +39,7 @@ def try_frame_difference():
     rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
     depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
     start = time.time()
-    frame_difference = FrameDifference(depth_im/255, rgb_im/255, 0.3, 0.005)
+    frame_difference = FrameDifference(depth_im / 255, rgb_im / 255, 0.3, 0.005)
     print("initialization: ", time.time() - start)
 
     for i in range(5):
@@ -48,8 +48,8 @@ def try_frame_difference():
 
         start = time.time()
 
-        frame_difference.current_depth = depth_im/255
-        frame_difference.current_rgb = rgb_im/255
+        frame_difference.current_depth = depth_im / 255
+        frame_difference.current_rgb = rgb_im / 255
         mask = frame_difference.subtraction_mask()
         mask = frame_difference.create_mask(mask)
 
@@ -61,13 +61,13 @@ def try_frame_difference():
         all_masks = all_masks.astype(float)
         for j in range(len(mask)):
             all_masks += mask[j].astype(float)
-        image_processing.save_image(all_masks/255, "Results/Frame difference", i, "mask")
+        image_processing.save_image(all_masks / 255, "Results/Frame difference", i, "mask")
 
 
 def try_ViBE():
     rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
     start = time.time()
-    vibe = ViBЕ(rgb_im=rgb_im/255, number_of_samples=10, threshold_r=20 / 255, time_factor=16)
+    vibe = ViBЕ(rgb_im=rgb_im / 255, number_of_samples=10, threshold_r=20 / 255, time_factor=16)
     print(time.time() - start)
 
     for i in range(5):
@@ -75,7 +75,7 @@ def try_ViBE():
 
         start = time.time()
 
-        vibe.current_rgb = rgb_im/255
+        vibe.current_rgb = rgb_im / 255
         vibe.set_mask()
         print(time.time() - start)
 
@@ -87,7 +87,7 @@ def try_DEVB():
     rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
     depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
     start = time.time()
-    devb = DEVB(rgb_im=rgb_im/255, depth_im=depth_im/255, number_of_samples=10, time_factor=16)
+    devb = DEVB(rgb_im=rgb_im / 255, depth_im=depth_im / 255, number_of_samples=10, time_factor=16)
     print(time.time() - start)
 
     for i in range(5):
@@ -95,7 +95,7 @@ def try_DEVB():
         depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i) + ".png", "depth")
 
         start = time.time()
-        devb.set_images(rgb_im/255, depth_im/255)
+        devb.set_images(rgb_im / 255, depth_im / 255)
         devb.set_mask()
         print(time.time() - start)
         mask = devb.mask
@@ -104,7 +104,6 @@ def try_DEVB():
 
 
 def try_RGB_MoG():
-
     rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
     start = time.time()
     mog = RGB_MoG(rgb_im, number_of_gaussians=3)
@@ -114,7 +113,8 @@ def try_RGB_MoG():
         start = time.time()
         mask = mog.set_mask(rgb_im)
         print("frame updating: ", time.time() - start)
-        image_processing.save_image(mask/255, "Results/RGB MoG", i, "mask")
+        image_processing.save_image(mask / 255, "Results/RGB MoG", i, "mask")
+
 
 def try_RGBD_MoG():
     rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
@@ -128,13 +128,36 @@ def try_RGBD_MoG():
         start = time.time()
         mask = mog.set_mask(rgb_im, depth_im)
         print("frame updating: ", time.time() - start)
-        image_processing.save_image(mask/255, "Results/RGBD MoG", i, "mask")
+        show_image(mask/255)
+        # image_processing.save_image(mask / 255, "Results/RGBD MoG", i, "mask")
+
+def try_fast_RGBD_MoG():
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
+    depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
+    start = time.time()
+    mog = Fast_RGBD_MoG(rgb_im, depth_im, number_of_gaussians=3)
+    print("initialization: ", time.time() - start)
+    for i in range(5):
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
+        depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i) + ".png", "depth")
+        start = time.time()
+        mask = mog.set_mask(rgb_im, depth_im)
+        print("frame updating: ", time.time() - start)
+    #     show_image(mask/255)
+    #     # image_processing.save_image(mask / 255, "Results/RGBD MoG", i, "mask")
+
+
+def show_image(image):
+    cv2.imshow("", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
     # try_vrep_connection()
-    try_frame_difference()
+    # try_frame_difference()
     # try_ViBE()
     # try_DEVB()
     # try_RGB_MoG()
     # try_RGBD_MoG()
+    try_fast_RGBD_MoG()

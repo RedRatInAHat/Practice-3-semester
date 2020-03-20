@@ -189,7 +189,9 @@ class PointsObject:
             name (string): name of the file
         """
         import open3d as o3d
+        from pathlib import Path
 
+        Path(path).mkdir(parents=True, exist_ok=True)
         full_path = path + "/" + name + ".pcd"
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(self.__xyz)
@@ -204,7 +206,9 @@ class PointsObject:
             name (string): name of the file
         """
         import open3d as o3d
+        from pathlib import Path
 
+        Path(path).mkdir(parents=True, exist_ok=True)
         xyz, rgb = self.get_points()
 
         full_path = path + "/" + name + ".pcd"
@@ -220,7 +224,7 @@ class PointsObject:
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(xyz)
         pcd.colors = o3d.utility.Vector3dVector(rgb)
-        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=60))
         return np.asarray(pcd.normals)
 
     def get_center(self):
