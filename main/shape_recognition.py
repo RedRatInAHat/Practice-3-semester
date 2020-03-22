@@ -3,8 +3,9 @@ import random
 import math
 
 
-def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.1, normal_to_normal_accuracy=0.01, number_of_points_threshold=40,
-           number_of_iterations=10, min_pc_number=100):
+def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.05, normal_to_normal_accuracy=0.01,
+           number_of_points_threshold=500,
+           number_of_iterations=10, min_pc_number=100, number_of_subsets=10):
     """RANSAC method for finding parameters of point cloud and it's primitive shape(s)
 
     Args:
@@ -15,31 +16,48 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.1, normal_to_normal_accur
         number_of_points_threshold (int): number of inliners to apply model as successful
         number_of_iterations (int): number of iterations before the best models will be applied as successful
         min_pc_number (int): number of points recognized too small to search for the model
+        number_of_subsets (int): number of subsets for detecting shape model
     """
     found_shapes = []
     itt = 0
     while itt < number_of_iterations and xyz.shape[0] > min_pc_number:
         itt += 1
 
-        # plane fitting
-        normal, ro = plane_fitting(xyz, xyz_normals)
-        # finding plane inliners
-        p_inliners = plane_inliners(xyz, xyz_normals, normal, ro, point_to_model_accuracy, normal_to_normal_accuracy)
+        plane_normal, plane_ro, plane_inliners = get_best_plane_model(xyz, xyz_normals, point_to_model_accuracy,
+                                                                      normal_to_normal_accuracy, number_of_subsets)
 
-        # if number of inliners more than threshold - create the model
-        if np.sum(p_inliners) > number_of_points_threshold:
-            xyz_in = xyz[p_inliners]
-            # create full model and add it to list of models
-            found_shapes.append(
-                plane_points(normal, ro, np.min(xyz_in[:, 0]), np.max(xyz_in[:, 0]), np.min(xyz_in[:, 1]),
-                             np.max(xyz_in[:, 1]), np.min(xyz_in[:, 2]), np.max(xyz_in[:, 2])))
+        if np.sum(plane_inliners) > number_of_points_threshold:
+            print(np.sum(plane_inliners), np.sum(plane_inliners) > number_of_points_threshold)
+            xyz_in = xyz[plane_inliners]
+            # found_shapes.append(plane_points(plane_normal, plane_ro, np.min(xyz_in[:, 0]), np.max(xyz_in[:, 0]),
+            #                                  np.min(xyz_in[:, 1]), np.max(xyz_in[:, 1]), np.min(xyz_in[:, 2]),
+            #                                  np.max(xyz_in[:, 2])))
+            # found_shapes.append(plane_points_free_shape(plane_normal, plane_ro, xyz_in))
+            found_shapes.append(plane_points_long_one(plane_normal, plane_ro, xyz_in))
             # delete found points
-            xyz = xyz[np.bitwise_not(p_inliners)]
-            xyz_normals = xyz_normals[np.bitwise_not(p_inliners)]
+            xyz = xyz[np.bitwise_not(plane_inliners)]
+            xyz_normals = xyz_normals[np.bitwise_not(plane_inliners)]
+
     return found_shapes
 
 
-def plane_fitting(points, normals):
+def get_best_plane_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_normal_accuracy, number_of_subsets):
+    best_score = 0
+    # plane fitting
+    for _ in range(number_of_subsets):
+        normal, ro = plane_fitting_one_point(xyz, xyz_normals)
+        # finding plane inliners
+        p_inliners = plane_inliners(xyz, xyz_normals, normal, ro, point_to_model_accuracy, normal_to_normal_accuracy)
+
+        if np.sum(p_inliners) > best_score:
+            # print(np.sum(abs(np.sum(xyz * normal, axis=1) - ro)[p_inliners])/np.sum(p_inliners))
+            best_normal = normal
+            best_ro = ro
+
+    return best_normal, best_ro, p_inliners
+
+
+def plane_fitting_one_point(points, normals):
     """ Finding the parameters of plane
 
     From equation n1(x-x0) + n2(y-y0) + n3(z-z0) = 0 find four parameters (n1 n2 n3 ro=n1x + n2y + n3z); xyz from point,
@@ -60,6 +78,20 @@ def plane_fitting(points, normals):
     normal = normals[i]
     ro = np.sum(points[i] * normals[i])
     return normal, ro
+
+
+def plane_fitting_three_points(points):
+    p = points[np.random.randint(points.shape[0], size=3), :]
+    p0, p1, p2 = p
+
+    v1 = p2 - p0
+    v2 = p1 - p0
+
+    cp = np.cross(v1, v2)
+    cp = cp / np.linalg.norm(cp)
+    d = np.dot(cp, p2)
+
+    return cp, d
 
 
 def plane_inliners(points, normals, plane_normal, plane_ro, d_accuracy, a_accuracy):
@@ -85,7 +117,7 @@ def plane_inliners(points, normals, plane_normal, plane_ro, d_accuracy, a_accura
     # threshold check
     angle_truth = np.logical_or(np.where(abs(angles) < a_accuracy, True, False),
                                 np.where(abs(angles) - math.pi < a_accuracy, True, False))
-    distance_truth = np.where(abs(np.sum(points * normals, axis=1) - plane_ro) < d_accuracy, True, False)
+    distance_truth = np.where(abs(np.sum(points * plane_normal, axis=1) - plane_ro) < d_accuracy, True, False)
     return np.logical_and(angle_truth, distance_truth)
 
 
@@ -94,6 +126,46 @@ def angle_between_normals(n1, n2):
     cosang = np.dot(n1, n2)
     sinang = np.linalg.norm(np.cross(n1, n2))
     return np.arctan2(sinang, cosang)
+
+
+def plane_points_long_one(normal, ro, points, step=0.01):
+    around_x = np.around(points[:, 0], decimals=get_count(step))
+    x = np.unique(around_x)
+    xyz = np.empty((0,3))
+    for i, x_value in enumerate(x):
+        min_y, max_y = np.min(points[around_x == x_value, 1]), np.max(points[around_x == x_value, 1])
+        y = np.arange(min_y, max_y + step, step)
+        xy = np.ones([y.shape[0], 3])
+        xy[:, 0] *= x_value
+        xy[:, 1] *= y
+        xyz = np.vstack((xyz, xy))
+    xyz[:, 2] = (ro - normal[0] * xyz[:, 0] - normal[1] * xyz[:, 1]) / normal[2]
+    return xyz
+
+
+def plane_points_free_shape(normal, ro, points, step=0.01):
+    x = np.arange(np.min(points[:, 0]), np.max(points[:, 0]) + step, step)
+    y = np.arange(np.min(points[:, 1]), np.max(points[:, 1]) + step, step)
+
+    x = np.tile(x, (y.shape[0], 1))
+    y = np.tile(np.array([y]).transpose(), (1, x.shape[1]))
+
+    points_around = np.around(points[:, :2], decimals=get_count(step))
+    found_points = np.c_[x.flatten(), y.flatten()]
+    found_points_around = np.around(found_points, decimals=get_count(step))
+    print(found_points_around.shape)
+
+    # code from here https://stackoverflow.com/questions/8317022/get-intersecting-rows-across-two-2d-numpy-arrays
+    # i'm not cool enough to understand why does it work. @TODO understand
+    nrows, ncols = points_around.shape
+    dtype = {'names': ['f{}'.format(i) for i in range(ncols)],
+             'formats': ncols * [points_around.dtype]}
+
+    C = np.intersect1d(points_around.view(dtype), found_points_around.view(dtype))
+    xy_points = C.view(points_around.dtype).reshape(-1, ncols)
+
+    z = (ro - normal[0] * xy_points[:, 0] - normal[1] * xy_points[:, 1]) / normal[2]
+    return np.c_[xy_points, z]
 
 
 def plane_points(normal, ro, x_min, x_max, y_min, y_max, z_min, z_max, step=0.01):
@@ -109,6 +181,13 @@ def plane_points(normal, ro, x_min, x_max, y_min, y_max, z_min, z_max, step=0.01
 
     return np.c_[np.c_[x.flatten()[z_condition], y.flatten()[z_condition]], z.flatten()[z_condition]]
 
+
+def get_count(number):
+    s = str(number)
+    if '.' in s:
+        return abs(s.find('.') - len(s)) - 1
+    else:
+        return 0
 # @TODO
 
 #

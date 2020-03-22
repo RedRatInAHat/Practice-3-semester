@@ -39,14 +39,15 @@ if __name__ == "__main__":
     # ball = PointsObject()
     # ball = download_point_cloud.download_to_object("preDiploma_PC/ball.pcd")
     # visualization.visualize_object([ball])
-    grey_plane = download_point_cloud.download_to_object("models/grey plane.ply", 3000)
+    grey_plane = download_point_cloud.download_to_object("models/red cube.ply", 5000)
     grey_plane.scale(0.1)
     grey_plane.shift([0.1, 0.5, 0.3])
-    # grey_plane.rotate([1, 0, 1], 1)
+    grey_plane.rotate([1, 0, 1], 2)
+
     # visualization.visualize_object([grey_plane])
+
     start = time.time()
-    found_shapes = shape_recognition.RANSAC(grey_plane.get_points()[0], grey_plane.get_normals(),
-                                            number_of_points_threshold=50)
+    found_shapes = shape_recognition.RANSAC(grey_plane.get_points()[0], grey_plane.get_normals())
     print(time.time() - start)
     shapes = [grey_plane]
     for _, s in enumerate(found_shapes):
