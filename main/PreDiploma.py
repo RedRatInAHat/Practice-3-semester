@@ -6,6 +6,7 @@ import download_point_cloud
 import shape_recognition
 import time
 import random
+import math
 
 
 def create_mask():
@@ -33,23 +34,42 @@ def save_points_cloud():
     object.set_points(points_cloud, points_color)
     object.save_all_points("Test", "ball")
 
+def temp():
+    ground_truth_vector = [0, 1, 0]
+    vector_model = PointsObject()
+    vector_model.add_points(np.asarray([ground_truth_vector]), np.asarray([[1, 0, 0]]))
+    vector_model_2 = PointsObject()
+    vector_model_2.add_points(np.asarray([ground_truth_vector]))
+    vector_model.rotate([1, 1, 1], math.radians(60))
+
+    normal = vector_model.get_points()[0][0]
+    angle = shape_recognition.angle_between_normals(ground_truth_vector, normal)
+    axis = np.cross(ground_truth_vector, normal)
+    print(np.degrees(angle), axis)
+    vector_model.rotate(axis, angle)
+
+    visualization.visualize_object([vector_model, vector_model_2])
+
+
 
 if __name__ == "__main__":
     # save_points_cloud()
     # ball = PointsObject()
     # ball = download_point_cloud.download_to_object("preDiploma_PC/ball.pcd")
     # visualization.visualize_object([ball])
-    grey_plane = download_point_cloud.download_to_object("models/red cube.ply", 5000)
-    grey_plane.scale(0.1)
-    grey_plane.shift([0.1, 0.5, 0.3])
-    grey_plane.rotate([1, 0, 1], 2)
+    full_model = download_point_cloud.download_to_object("models/orange sphere.ply", 3000)
+    full_model.scale(0.1)
+    full_model.shift([0.2, 0.15, 0.13])
+    full_model.rotate([1, 1, 1], math.radians(60))
+
+    # temp()
 
     # visualization.visualize_object([grey_plane])
 
     start = time.time()
-    found_shapes = shape_recognition.RANSAC(grey_plane.get_points()[0], grey_plane.get_normals())
+    found_shapes = shape_recognition.RANSAC(full_model.get_points()[0], full_model.get_normals())
     print(time.time() - start)
-    shapes = [grey_plane]
+    shapes = [full_model]
     for _, s in enumerate(found_shapes):
         new_shape = PointsObject()
         new_shape.add_points(s, np.asarray([[random.random(), random.random(), random.random()]] * s.shape[0]))
