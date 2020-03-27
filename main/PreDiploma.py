@@ -50,6 +50,18 @@ def temp():
 
     visualization.visualize_object([vector_model, vector_model_2])
 
+def temp_2():
+    import open3d as o3d
+    full_model = download_point_cloud.download_to_object("models/blue conus.ply", 3000)
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(full_model.get_points()[0])
+    # pcd = o3d.io.read_point_cloud("models/brown cylinder.ply")
+    downpcd = pcd.voxel_down_sample(voxel_size=0.05)
+    o3d.visualization.draw_geometries([downpcd])
+    downpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(
+        radius=0.1, max_nn=30))
+    o3d.visualization.draw_geometries([downpcd])
+
 
 
 if __name__ == "__main__":
@@ -57,12 +69,13 @@ if __name__ == "__main__":
     # ball = PointsObject()
     # ball = download_point_cloud.download_to_object("preDiploma_PC/ball.pcd")
     # visualization.visualize_object([ball])
-    full_model = download_point_cloud.download_to_object("models/orange sphere.ply", 3000)
+    full_model = download_point_cloud.download_to_object("models/blue conus.ply", 3000)
     full_model.scale(0.1)
-    full_model.shift([0.2, 0.15, 0.13])
+    full_model.shift([0.09, -0.04, 0.06])
     full_model.rotate([1, 1, 1], math.radians(60))
 
     # temp()
+    # temp_2()
 
     # visualization.visualize_object([grey_plane])
 

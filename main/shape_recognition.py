@@ -49,13 +49,31 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.05, normal_to_normal_accu
         #     xyz_normals = xyz_normals[np.bitwise_not(plane_inliners)]
 
         # sphere code
-        sphere_center, sphere_radius, sphere_inliners = get_best_sphere_model(xyz, point_to_model_accuracy,
-                                                                              number_of_subsets)
-        if np.sum(sphere_inliners) > number_of_points_threshold:
-            found_shapes.append(sphere_points(sphere_center, sphere_radius))
-            xyz = xyz[np.bitwise_not(sphere_inliners)]
-            xyz_normals = xyz_normals[np.bitwise_not(sphere_inliners)]
+        # sphere_center, sphere_radius, sphere_inliners = get_best_sphere_model(xyz, point_to_model_accuracy,
+        #                                                                       number_of_subsets)
+        # if np.sum(sphere_inliners) > number_of_points_threshold:
+        #     found_shapes.append(sphere_points(sphere_center, sphere_radius))
+        #     xyz = xyz[np.bitwise_not(sphere_inliners)]
+        #     xyz_normals = xyz_normals[np.bitwise_not(sphere_inliners)]
 
+        # cylinder code
+        # cylinder_axis, cylinder_radius, cylinder_center, cylinder_inliners = get_best_cylinder_model(xyz, xyz_normals,
+        #                                                                                              point_to_model_accuracy,
+        #                                                                                              number_of_subsets)
+        # if np.sum(cylinder_inliners) > number_of_points_threshold:
+        #     xyz_in = xyz[cylinder_inliners]
+        #     found_shapes.append(cylinder_points(cylinder_axis, cylinder_radius, cylinder_center, xyz_in))
+        #     xyz = xyz[np.bitwise_not(cylinder_inliners)]
+        #     xyz_normals = xyz_normals[np.bitwise_not(cylinder_inliners)]
+
+        # cone code
+        cone_apex, cone_axis, cone_alfa, cone_inliners = get_best_cone_model(xyz, xyz_normals,
+                                                                             point_to_model_accuracy,
+                                                                             number_of_subsets)
+        if np.sum(cone_inliners) > number_of_points_threshold:
+            found_shapes.append(cone_points(xyz[cone_inliners], cone_apex, cone_axis, cone_alfa))
+            xyz = xyz[np.bitwise_not(cone_inliners)]
+            xyz_normals = xyz_normals[np.bitwise_not(cone_inliners)]
     return found_shapes
 
 
@@ -429,18 +447,188 @@ def sphere_inliners(points, center, radius, point_to_model_accuracy):
     mean = np.sum(dif[accuracy]) / np.sum(accuracy)
     return accuracy, mean
 
-def sphere_points(center, radius, step = math.radians(3)):
 
-    theta = np.arange(0, 2*math.pi+step, step)
-    phi = np.arange(0, math.pi+step, step)
-    points = np.zeros((theta.shape[0]*phi.shape[0], 3))
-    angles = np.zeros((theta.shape[0]*phi.shape[0], 2))
+def sphere_points(center, radius, step=math.radians(3)):
+    theta = np.arange(0, 2 * math.pi + step, step)
+    phi = np.arange(0, math.pi + step, step)
+    points = np.zeros((theta.shape[0] * phi.shape[0], 3))
+    angles = np.zeros((theta.shape[0] * phi.shape[0], 2))
     angles[:, 0] = np.repeat(theta, phi.shape[0])
     angles[:, 1] = np.tile(phi, theta.shape[0])
     points[:, 0] = radius * np.cos(angles[:, 0]) * np.sin(angles[:, 1])
     points[:, 1] = radius * np.sin(angles[:, 0]) * np.sin(angles[:, 1])
     points[:, 2] = radius * np.cos(angles[:, 1])
     return points + center
+
+
+def get_best_cylinder_model(points, normals, point_to_model_accuracy, number_of_subsets):
+    best_score = 0
+    best_radius = best_center_point = best_axis = 0
+    best_mean = point_to_model_accuracy * 2
+    best_inliners = 0
+    for _ in range(number_of_subsets):
+        axis, radius, center = cylinder_fitting(points, normals)
+        inliners, mean = cylinder_inliners(points, axis, radius, center, point_to_model_accuracy)
+        if np.sum(inliners) >= best_score and mean < best_mean:
+            best_score, best_mean = np.sum(inliners), mean
+            best_axis, best_radius, best_center_point = axis, radius, center
+            best_inliners = inliners
+    return best_axis, best_radius, best_center_point, best_inliners
+
+
+def cylinder_fitting(xyz, xyz_normals):
+    indexes = np.random.choice(xyz.shape[0], 2)
+    points = xyz[indexes]
+    normals = xyz_normals[indexes]
+    axis = np.cross(normals[0], normals[1])
+    axis /= np.linalg.norm(axis)
+
+    plane_normal = np.cross(axis, normals[0])
+    plane_normal /= np.linalg.norm(plane_normal)
+
+    ro = np.sum(points[0] * plane_normal)
+
+    t = (ro - np.sum(plane_normal * points[1])) / np.sum(plane_normal * normals[1])
+    center_point = normals[1] * t + points[1]
+
+    radius = np.linalg.norm(center_point - points[1])
+
+    return axis, radius, center_point
+
+
+def cylinder_inliners(points, axis, radius, center_point, point_to_model_accuracy):
+    distances_dif = np.abs(np.linalg.norm(np.cross((points - center_point), axis), axis=1) - radius)
+    inliners = distances_dif < point_to_model_accuracy
+    return inliners, np.mean(distances_dif[inliners])
+
+
+def cylinder_points(cylinder_axis, radius, center, inliners, h_step=0.01, angle_step=math.radians(3)):
+    axis = [0, 1, 0]
+
+    inliners -= center
+    inliners = rotate(inliners, np.cross(axis, cylinder_axis), angle_between_normals(cylinder_axis, axis))
+
+    h = np.arange(np.min(inliners[:, 1]), np.max(inliners[:, 1]) + h_step, h_step)
+    phi = np.arange(0, math.pi * 2 + angle_step, angle_step)
+
+    x = np.tile(radius * np.cos(phi), h.shape[0])
+    z = np.tile(radius * np.sin(phi), h.shape[0])
+
+    points = np.empty((x.shape[0], 3))
+    points[:, 0], points[:, 1], points[:, 2] = x, np.repeat(h, points.shape[0] / h.shape[0]), z
+
+    points = rotate(points, np.cross(cylinder_axis, axis), angle_between_normals(axis, cylinder_axis))
+    points += center
+
+    return points
+
+
+def get_best_cone_model(points, normals, point_to_model_accuracy, number_of_subsets):
+    best_score = 0
+    best_apex = best_axis = best_alfa = 0
+    best_mean = point_to_model_accuracy * 2
+    best_inliners = 0
+    for _ in range(number_of_subsets):
+        apex, axis, alfa = cone_fitting(points, normals)
+        inliners = cone_inliners(points, apex, axis, alfa, point_to_model_accuracy)
+        if np.sum(inliners) > best_score:
+            best_score = np.sum(inliners)
+            best_apex, best_axis, best_alfa = apex, axis, alfa
+            best_inliners = inliners
+    return best_apex, best_axis, best_alfa, best_inliners
+
+
+def cone_fitting(xyz, xyz_normals):
+    indexes = np.random.choice(xyz.shape[0], 3)
+    points = xyz[indexes]
+    normals = xyz_normals[indexes]
+
+    # find three planes intersection
+    # find two planes intersection
+    n0 = np.asarray([[normals[0, 1], normals[0, 2]],
+                     [normals[1, 1], normals[1, 2]]])
+    n1 = np.asarray([[normals[0, 2], normals[0, 0]],
+                     [normals[1, 2], normals[1, 0]]])
+    n2 = np.asarray([[normals[0, 0], normals[0, 1]],
+                     [normals[1, 0], normals[1, 1]]])
+    direction_vector = np.asarray([np.linalg.det(n0), np.linalg.det(n1), np.linalg.det(n2)])
+    direction_vector /= np.linalg.norm(direction_vector)
+
+    ro_0 = np.sum(points[0] * normals[0])
+    ro_1 = np.sum(points[1] * normals[1])
+    delta = np.linalg.det(np.asarray([[normals[0, 0], normals[0, 1]],
+                                      [normals[1, 0], normals[1, 1]]]))
+    delta_x = np.linalg.det(np.asarray([[ro_0, normals[0, 1]],
+                                        [ro_1, normals[1, 1]]]))
+    delta_y = np.linalg.det(np.asarray([[normals[0, 0], ro_0],
+                                        [normals[1, 0], ro_1]]))
+    direction_point = np.asarray([delta_x / delta, delta_y / delta, 0])
+
+    # line and point intersection
+    ro_2 = np.sum(points[2] * normals[2])
+    t = (ro_2 - np.sum(normals[2] * direction_point)) / np.sum(normals[2] * direction_vector)
+    intersection_point = direction_vector * t + direction_point
+
+    # find the axis
+
+    plane_point_0 = intersection_point + (points[0] - intersection_point) / np.linalg.norm(
+        points[0] - intersection_point)
+    plane_point_1 = intersection_point + (points[1] - intersection_point) / np.linalg.norm(
+        points[1] - intersection_point)
+    plane_point_2 = intersection_point + (points[2] - intersection_point) / np.linalg.norm(
+        points[2] - intersection_point)
+
+    v1 = plane_point_2 - plane_point_0
+    v2 = plane_point_1 - plane_point_0
+
+    axis = np.cross(v1, v2)
+    axis /= np.linalg.norm(axis)
+
+    # find angle
+    alfa = 0
+    for i in range(3):
+        angle = angle_between_normals(points[0] - intersection_point, axis)
+        if angle > math.pi / 2:
+            angle = math.pi - angle
+        alfa += angle
+    alfa /= 3
+
+    return intersection_point, axis, alfa
+
+
+def cone_inliners(points, apex, axis, alfa, point_to_model_accuracy):
+    p_a_vectors = points - apex
+    p_a_cosang = np.dot(p_a_vectors, axis)
+    p_a_sinang = np.linalg.norm(np.cross(p_a_vectors, axis), axis=1)
+    p_a_angles = np.arctan2(p_a_sinang, p_a_cosang)
+    p_a_angles = np.where(np.abs(p_a_angles) > math.pi / 2, math.pi - np.abs(p_a_angles), np.abs(p_a_angles))
+
+    errors = np.sin(p_a_angles - alfa) * np.linalg.norm(p_a_vectors)
+    return np.abs(errors) < point_to_model_accuracy
+
+
+def cone_points(points, apex, cone_axis, alfa, h_step=0.005, angle_step=math.radians(3)):
+    axis = [0, 1, 0]
+
+    points -= apex
+    inliners = rotate(points, np.cross(axis, cone_axis), angle_between_normals(cone_axis, axis))
+
+    tan = math.tan(alfa)
+
+    h = np.arange(np.min(inliners[:, 1]), np.max(inliners[:, 1]) + h_step, h_step)
+    phi = np.arange(0, math.pi * 2 + angle_step, angle_step)
+
+    points = np.empty((h.shape[0] * phi.shape[0], 3))
+    points[:, 1] = np.repeat(h, phi.shape[0])
+
+    phi = np.tile(phi, h.shape[0])
+    points[:, 0] = tan * points[:, 1] * np.cos(phi)
+    points[:, 2] = tan * points[:, 1] * np.sin(phi)
+
+    points = rotate(points, np.cross(cone_axis, axis), angle_between_normals(axis, cone_axis))
+    points += apex
+
+    return points
 
 
 def rotate(points, axis, angle):
@@ -464,24 +652,3 @@ def rotate(points, axis, angle):
     A = np.dot(R, A.T).T
 
     return A[:, :-1]
-# @TODO
-
-#
-# def fitting(self, points, normals):
-#     return shape_points
-#
-#
-# def shere_fitting(self, points, normals):
-#     return sphere_points
-#
-# def cube_fitting(self, points, normals):
-#     return cube_points
-#
-# def conus_fitting(self, points, normals):
-#     return conus_fitting
-#
-# def cylinder_fitting(self, points, normals):
-#     return cylinder_fitting
-#
-# def model_fit(self, points, model_points):
-#     return True or False
