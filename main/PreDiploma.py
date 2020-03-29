@@ -69,8 +69,8 @@ if __name__ == "__main__":
     # ball = PointsObject()
     # ball = download_point_cloud.download_to_object("preDiploma_PC/ball.pcd")
     # visualization.visualize_object([ball])
-    full_model = download_point_cloud.download_to_object("models/blue conus.ply", 6000)
-    full_model.scale(0.1)
+    full_model = download_point_cloud.download_to_object("models/blue conus.ply", 3000)
+    full_model.scale(0.2)
     # full_model.shift([0.09, -0.04, 0.06])
     # full_model.rotate([1, 1, 1], math.radians(60))
 

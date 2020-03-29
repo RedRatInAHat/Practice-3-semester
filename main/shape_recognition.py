@@ -124,9 +124,13 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
                 'mean'] < best_mean):
                 best_model = model
                 best_score, best_mean = np.sum(fitted_shapes[model]['inliners']), fitted_shapes[model]['mean']
+        function = fitted_shapes[best_model]['function']
+        params = fitted_shapes[best_model]['parameters']
+        inliners = xyz[fitted_shapes[best_model]['inliners']]
+        found_shapes.append(function(params, inliners))
         xyz = xyz[np.logical_not(fitted_shapes[best_model]['inliners'])]
         xyz_normals = xyz_normals[np.logical_not(fitted_shapes[best_model]['inliners'])]
-        print(best_model, best_score)
+        print(best_model, best_score, best_mean, fitted_shapes[best_model]['parameters'])
     return found_shapes
 
 
@@ -217,7 +221,8 @@ def plane_inliners(points, normals, plane_normal, plane_ro, d_accuracy, a_accura
     return inliners, np.mean(distances[inliners])
 
 
-def plane_points_long_one(normal, ro, points, step=0.01):
+def plane_points_long_one(parameters, points, step=0.01):
+    normal, ro = parameters
     around_points = np.around(points, decimals=get_count(step))
     xyz = np.ones((0, 3))
 
@@ -378,13 +383,14 @@ def box_inliners(points, normal_0, ro_0, normal_1, ro_1, normal_2, ro_2, accurac
     return inliners_0, inliners_1, inliners_2, np.min(distances, axis=1)
 
 
-def box_points(normals, ro, inliners):
+def box_points(parameters, inliners, step=0.01):
+    normals, ro = parameters
     if ro.shape[1] == 2:
         shift = np.mean(inliners, axis=0)
         inliners -= shift
         inliners, new_normals = go_to_standard_axises(normals, inliners)
 
-        inliners = generate_box_points(inliners)
+        inliners = generate_box_points(inliners, step)
 
         inliners, _ = go_to_standard_axises(np.flip(new_normals, 0), inliners, np.flip(normals, 0))
         inliners += shift
@@ -500,7 +506,8 @@ def sphere_inliners(points, center, radius, point_to_model_accuracy):
     return accuracy, mean
 
 
-def sphere_points(center, radius, step=math.radians(3)):
+def sphere_points(parameters, inliners, step=math.radians(3)):
+    center, radius = parameters
     theta = np.arange(0, 2 * math.pi + step, step)
     phi = np.arange(0, math.pi + step, step)
     points = np.zeros((theta.shape[0] * phi.shape[0], 3))
@@ -554,7 +561,8 @@ def cylinder_inliners(points, axis, radius, center_point, point_to_model_accurac
     return inliners, np.mean(distances_dif[inliners])
 
 
-def cylinder_points(cylinder_axis, radius, center, inliners, h_step=0.01, angle_step=math.radians(3)):
+def cylinder_points(parameters, inliners, h_step=0.01, angle_step=math.radians(3)):
+    cylinder_axis, radius, center = parameters
     axis = [0, 1, 0]
 
     inliners -= center
@@ -588,7 +596,6 @@ def get_best_cone_model(points, normals, point_to_model_accuracy, number_of_subs
             best_apex, best_axis, best_alfa = apex, axis, alfa
             best_inliners = inliners
             best_mean = mean
-    print(best_apex, best_axis, math.degrees(best_alfa), np.sum(best_inliners), best_mean)
     return best_apex, best_axis, best_alfa, best_inliners, best_mean
 
 
@@ -657,12 +664,14 @@ def cone_inliners(points, apex, axis, alfa, point_to_model_accuracy):
     p_a_angles = np.arctan2(p_a_sinang, p_a_cosang)
     p_a_angles = np.where(np.abs(p_a_angles) > math.pi / 2, math.pi - np.abs(p_a_angles), np.abs(p_a_angles))
 
-    errors = np.sin(np.abs(p_a_angles - alfa)) * np.linalg.norm(p_a_vectors)
+    vector_len = np.linalg.norm(p_a_vectors, axis = 1)
+    errors = np.sin(np.abs(p_a_angles - alfa)) * np.linalg.norm(p_a_vectors, axis = 1)
     inliners = errors < point_to_model_accuracy
     return inliners, np.mean(errors[inliners])
 
 
-def cone_points(points, apex, cone_axis, alfa, h_step=0.005, angle_step=math.radians(3)):
+def cone_points(parameters, points, h_step=0.005, angle_step=math.radians(3)):
+    apex, cone_axis, alfa = parameters
     axis = [0, 1, 0]
 
     points -= apex
@@ -670,7 +679,7 @@ def cone_points(points, apex, cone_axis, alfa, h_step=0.005, angle_step=math.rad
 
     tan = math.tan(alfa)
 
-    h = np.arange(np.min(inliners[:, 1]), np.max(inliners[:, 1]) + h_step, h_step)
+    h = np.arange(np.min(inliners[:, 1]), np.max(inliners[:, 1]), h_step)
     phi = np.arange(0, math.pi * 2 + angle_step, angle_step)
 
     points = np.empty((h.shape[0] * phi.shape[0], 3))
