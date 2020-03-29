@@ -3,9 +3,9 @@ import random
 import math
 
 
-def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.05, normal_to_normal_accuracy=0.01,
-           number_of_points_threshold=100,
-           number_of_iterations=10, min_pc_number=100, number_of_subsets=10):
+def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accuracy=0.01,
+           number_of_points_threshold=300,
+           number_of_iterations=10, min_pc_number=300, number_of_subsets=10):
     """RANSAC method for finding parameters of point cloud and it's primitive shape(s)
 
     Args:
@@ -23,76 +23,132 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.05, normal_to_normal_accu
 
     while itt < number_of_iterations and xyz.shape[0] > min_pc_number:
         itt += 1
-
-        # cube code
-        # box_normals, box_ro, box_inliners = get_best_box_model(xyz, xyz_normals, point_to_model_accuracy,
-        #                                                        normal_to_normal_accuracy, number_of_subsets)
-        # if np.sum(box_inliners) > number_of_points_threshold:
-        #     xyz_in = xyz[box_inliners]
-        #     found_shapes.append(box_points(box_normals, box_ro, xyz_in))
-        #     xyz = xyz[np.bitwise_not(box_inliners)]
-        #     xyz_normals = xyz_normals[np.bitwise_not(box_inliners)]
-        #     print(np.sum(box_inliners))
+        fitted_shapes = {}
+        # box code
+        try:
+            box_normals, box_ro, box_inliners, box_mean = get_best_box_model(xyz, xyz_normals, point_to_model_accuracy,
+                                                                             normal_to_normal_accuracy,
+                                                                             number_of_subsets)
+        except:
+            print("box crushed")
+            box_inliners = 0
+        if np.sum(box_inliners) > number_of_points_threshold:
+            # xyz_in = xyz[box_inliners]
+            # found_shapes.append(box_points(box_normals, box_ro, xyz_in))
+            # xyz = xyz[np.bitwise_not(box_inliners)]
+            # xyz_normals = xyz_normals[np.bitwise_not(box_inliners)]
+            box_params = {'parameters': [box_normals, box_ro], 'inliners': box_inliners, 'mean': box_mean,
+                          'function': box_points}
+            fitted_shapes['box'] = box_params
 
         # plane_code
-        # plane_normal, plane_ro, plane_inliners = get_best_plane_model(xyz, xyz_normals, point_to_model_accuracy,
-        #                                                               normal_to_normal_accuracy, number_of_subsets)
-        # if np.sum(plane_inliners) > number_of_points_threshold:
-        #     xyz_in = xyz[plane_inliners]
-        #     # found_shapes.append(plane_points(plane_normal, plane_ro, np.min(xyz_in[:, 0]), np.max(xyz_in[:, 0]),
-        #     #                                  np.min(xyz_in[:, 1]), np.max(xyz_in[:, 1]), np.min(xyz_in[:, 2]),
-        #     #                                  np.max(xyz_in[:, 2])))
-        #     # found_shapes.append(plane_points_free_shape(plane_normal, plane_ro, xyz_in))
-        #     found_shapes.append(plane_points_long_one(plane_normal, plane_ro, xyz_in))
-        #     # delete found points
-        #     xyz = xyz[np.bitwise_not(plane_inliners)]
-        #     xyz_normals = xyz_normals[np.bitwise_not(plane_inliners)]
+        try:
+            plane_normal, plane_ro, plane_inliners, plane_mean = get_best_plane_model(xyz, xyz_normals,
+                                                                                      point_to_model_accuracy,
+                                                                                      normal_to_normal_accuracy,
+                                                                                      number_of_subsets)
+        except:
+            print("plane crushed")
+            plane_inliners = 0
+
+        if np.sum(plane_inliners) > number_of_points_threshold:
+            # xyz_in = xyz[plane_inliners]
+            # # found_shapes.append(plane_points(plane_normal, plane_ro, np.min(xyz_in[:, 0]), np.max(xyz_in[:, 0]),
+            # #                                  np.min(xyz_in[:, 1]), np.max(xyz_in[:, 1]), np.min(xyz_in[:, 2]),
+            # #                                  np.max(xyz_in[:, 2])))
+            # # found_shapes.append(plane_points_free_shape(plane_normal, plane_ro, xyz_in))
+            # found_shapes.append(plane_points_long_one(plane_normal, plane_ro, xyz_in))
+            # # delete found points
+            # xyz = xyz[np.bitwise_not(plane_inliners)]
+            # xyz_normals = xyz_normals[np.bitwise_not(plane_inliners)]
+            plane_params = {'parameters': [plane_normal, plane_ro], 'inliners': plane_inliners, 'mean': plane_mean,
+                            'function': plane_points_long_one}
+            fitted_shapes['plane'] = plane_params
 
         # sphere code
-        # sphere_center, sphere_radius, sphere_inliners = get_best_sphere_model(xyz, point_to_model_accuracy,
-        #                                                                       number_of_subsets)
-        # if np.sum(sphere_inliners) > number_of_points_threshold:
-        #     found_shapes.append(sphere_points(sphere_center, sphere_radius))
-        #     xyz = xyz[np.bitwise_not(sphere_inliners)]
-        #     xyz_normals = xyz_normals[np.bitwise_not(sphere_inliners)]
+        try:
+            sphere_center, sphere_radius, sphere_inliners, sphere_mean = get_best_sphere_model(xyz,
+                                                                                               point_to_model_accuracy,
+                                                                                               number_of_subsets)
+        except:
+            print('sphere crushed')
+            sphere_inliners = 0
+        if np.sum(sphere_inliners) > number_of_points_threshold:
+            #     found_shapes.append(sphere_points(sphere_center, sphere_radius))
+            #     xyz = xyz[np.bitwise_not(sphere_inliners)]
+            #     xyz_normals = xyz_normals[np.bitwise_not(sphere_inliners)]
+            sphere_params = {'parameters': [sphere_center, sphere_radius], 'inliners': sphere_inliners,
+                             'mean': sphere_mean, 'function': sphere_points}
+            fitted_shapes['sphere'] = sphere_params
 
         # cylinder code
-        # cylinder_axis, cylinder_radius, cylinder_center, cylinder_inliners = get_best_cylinder_model(xyz, xyz_normals,
-        #                                                                                              point_to_model_accuracy,
-        #                                                                                              number_of_subsets)
-        # if np.sum(cylinder_inliners) > number_of_points_threshold:
-        #     xyz_in = xyz[cylinder_inliners]
-        #     found_shapes.append(cylinder_points(cylinder_axis, cylinder_radius, cylinder_center, xyz_in))
-        #     xyz = xyz[np.bitwise_not(cylinder_inliners)]
-        #     xyz_normals = xyz_normals[np.bitwise_not(cylinder_inliners)]
+        try:
+            cylinder_axis, cylinder_radius, cylinder_center, cylinder_inliners, cylinder_mean = get_best_cylinder_model(
+                xyz,
+                xyz_normals,
+                point_to_model_accuracy,
+                number_of_subsets)
+        except:
+            print("cylinder crushed")
+            cylinder_inliners = 0
+        if np.sum(cylinder_inliners) > number_of_points_threshold:
+            #     xyz_in = xyz[cylinder_inliners]
+            #     found_shapes.append(cylinder_points(cylinder_axis, cylinder_radius, cylinder_center, xyz_in))
+            #     xyz = xyz[np.bitwise_not(cylinder_inliners)]
+            #     xyz_normals = xyz_normals[np.bitwise_not(cylinder_inliners)]
+            cylinder_params = {'parameters': [cylinder_axis, cylinder_radius, cylinder_center],
+                               'inliners': cylinder_inliners, 'mean': cylinder_mean, 'function': cylinder_points}
+            fitted_shapes['cylinder'] = cylinder_params
 
         # cone code
-        cone_apex, cone_axis, cone_alfa, cone_inliners = get_best_cone_model(xyz, xyz_normals,
-                                                                             point_to_model_accuracy,
-                                                                             number_of_subsets)
+        try:
+            cone_apex, cone_axis, cone_alfa, cone_inliners, cone_mean = get_best_cone_model(xyz, xyz_normals,
+                                                                                            point_to_model_accuracy,
+                                                                                            number_of_subsets)
+        except:
+            print('cone crushed')
+            cone_inliners = 0
         if np.sum(cone_inliners) > number_of_points_threshold:
-            found_shapes.append(cone_points(xyz[cone_inliners], cone_apex, cone_axis, cone_alfa))
-            xyz = xyz[np.bitwise_not(cone_inliners)]
-            xyz_normals = xyz_normals[np.bitwise_not(cone_inliners)]
+            cone_params = {'parameters': [cone_apex, cone_axis, cone_alfa], 'inliners': cone_inliners,
+                           'mean': cone_mean, 'function': cone_points}
+            fitted_shapes['cone'] = cone_params
+        #     found_shapes.append(cone_points(xyz[cone_inliners], cone_apex, cone_axis, cone_alfa))
+        #     xyz = xyz[np.bitwise_not(cone_inliners)]
+        #     xyz_normals = xyz_normals[np.bitwise_not(cone_inliners)]
+        best_score, best_mean = 0, point_to_model_accuracy * 2
+        best_model = None
+        for model in fitted_shapes:
+            # print(model, np.sum(fitted_shapes[model]['inliners']))
+            if np.sum(fitted_shapes[model]['inliners']) > best_score or (
+                    np.sum(fitted_shapes[model]['inliners']) == best_score and fitted_shapes[model][
+                'mean'] < best_mean):
+                best_model = model
+                best_score, best_mean = np.sum(fitted_shapes[model]['inliners']), fitted_shapes[model]['mean']
+        xyz = xyz[np.logical_not(fitted_shapes[best_model]['inliners'])]
+        xyz_normals = xyz_normals[np.logical_not(fitted_shapes[best_model]['inliners'])]
+        print(best_model, best_score)
     return found_shapes
 
 
 def get_best_plane_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_normal_accuracy, number_of_subsets):
     best_score = 0
+    best_mean = point_to_model_accuracy * 2
     # plane fitting
     for _ in range(number_of_subsets):
         normal, ro = plane_fitting_one_point(xyz, xyz_normals)
         # finding plane inliners
-        p_inliners = plane_inliners(xyz, xyz_normals, normal, ro, point_to_model_accuracy, normal_to_normal_accuracy)
+        p_inliners, mean = plane_inliners(xyz, xyz_normals, normal, ro, point_to_model_accuracy,
+                                          normal_to_normal_accuracy)
 
-        if np.sum(p_inliners) > best_score:
+        if np.sum(p_inliners) >= best_score and mean < best_mean:
             best_score = np.sum(p_inliners)
+            best_mean = mean
             # print(np.sum(abs(np.sum(xyz * normal, axis=1) - ro)[p_inliners])/np.sum(p_inliners))
             best_normal = normal
             best_ro = ro
             best_inliners = p_inliners
 
-    return best_normal, best_ro, best_inliners
+    return best_normal, best_ro, best_inliners, best_mean
 
 
 def plane_fitting_one_point(points, normals):
@@ -155,15 +211,10 @@ def plane_inliners(points, normals, plane_normal, plane_ro, d_accuracy, a_accura
     # threshold check
     angle_truth = np.logical_or(np.where(abs(angles) < a_accuracy, True, False),
                                 np.where(abs(angles) - math.pi < a_accuracy, True, False))
-    distance_truth = np.where(abs(np.sum(points * plane_normal, axis=1) - plane_ro) < d_accuracy, True, False)
-    return np.logical_and(angle_truth, distance_truth)
-
-
-def angle_between_normals(n1, n2):
-    """ Returns the angle in radians between vectors 'n1' and 'n2'"""
-    cosang = np.dot(n1, n2)
-    sinang = np.linalg.norm(np.cross(n1, n2))
-    return np.abs(np.arctan2(sinang, cosang))
+    distances = abs(np.sum(points * plane_normal, axis=1) - plane_ro)
+    distance_truth = np.where(distances < d_accuracy, True, False)
+    inliners = np.logical_and(angle_truth, distance_truth)
+    return inliners, np.mean(distances[inliners])
 
 
 def plane_points_long_one(normal, ro, points, step=0.01):
@@ -253,17 +304,10 @@ def plane_points(normal, ro, x_min, x_max, y_min, y_max, z_min, z_max, step=0.01
     return np.c_[np.c_[x.flatten()[z_condition], y.flatten()[z_condition]], z.flatten()[z_condition]]
 
 
-def get_count(number):
-    s = str(number)
-    if '.' in s:
-        return abs(s.find('.') - len(s)) - 1
-    else:
-        return 0
-
-
 def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_normal_accuracy,
                        number_of_subsets, full_model=True):
     best_score = 0
+    best_mean = point_to_model_accuracy * 2
     normal_0_best, normal_1_best = 0, 0
     # box fitting
     for _ in range(number_of_subsets):
@@ -271,12 +315,13 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
         normal_1, ro_1 = plane_fitting_one_point(xyz, xyz_normals)
 
         if 3.12 > angle_between_normals(normal_0, normal_1) > 0.001:
-            p0_inliners = plane_inliners(xyz, xyz_normals, normal_0, ro_0, point_to_model_accuracy,
-                                         normal_to_normal_accuracy)
-            p1_inliners = plane_inliners(xyz, xyz_normals, normal_1, ro_1, point_to_model_accuracy,
-                                         normal_to_normal_accuracy)
-            if np.sum(p0_inliners) + np.sum(p1_inliners) > best_score:
+            p0_inliners, mean_0 = plane_inliners(xyz, xyz_normals, normal_0, ro_0, point_to_model_accuracy,
+                                                 normal_to_normal_accuracy)
+            p1_inliners, mean_1 = plane_inliners(xyz, xyz_normals, normal_1, ro_1, point_to_model_accuracy,
+                                                 normal_to_normal_accuracy)
+            if np.sum(p0_inliners) + np.sum(p1_inliners) >= best_score and (mean_0 + mean_1) / 2 < best_mean:
                 best_score = np.sum(p0_inliners) + np.sum(p1_inliners)
+                best_mean = (mean_0 + mean_1) / 2
                 normal_0_best = normal_0
                 normal_1_best = normal_1
     normal_2 = np.cross(normal_0_best, normal_1_best)
@@ -285,23 +330,26 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
     ro_1 = get_most_frequent_ro(normal_1_best, xyz)
     ro_2 = get_most_frequent_ro(normal_2_best, xyz)
 
-    inliners_0, inliners_1, inliners_2 = box_inliners(xyz, normal_0_best, ro_0, normal_1_best, ro_1, normal_2_best,
-                                                      ro_2, point_to_model_accuracy)
+    inliners_0, inliners_1, inliners_2, distances_0 = box_inliners(xyz, normal_0_best, ro_0, normal_1_best, ro_1,
+                                                                   normal_2_best, ro_2, point_to_model_accuracy)
     box_inliners_0 = np.logical_or(np.logical_or(inliners_0, inliners_1), inliners_2)
+    box_mean_0 = np.mean(distances_0[box_inliners_0])
 
     if full_model:
         xyz_ = xyz[np.bitwise_not(box_inliners_0)]
         ro_0_ = get_most_frequent_ro(normal_0_best, xyz_)
         ro_1_ = get_most_frequent_ro(normal_1_best, xyz_)
         ro_2_ = get_most_frequent_ro(normal_2_best, xyz_)
-        inliners_0, inliners_1, inliners_2 = box_inliners(xyz, normal_0_best, ro_0_, normal_1_best, ro_1_,
-                                                          normal_2_best, ro_2_, point_to_model_accuracy)
+        inliners_0, inliners_1, inliners_2, distances_1 = box_inliners(xyz, normal_0_best, ro_0_, normal_1_best, ro_1_,
+                                                                       normal_2_best, ro_2_, point_to_model_accuracy)
         box_inliners_1 = np.logical_or(np.logical_or(inliners_0, inliners_1), inliners_2)
+        box_mean_1 = np.mean(distances_1[box_inliners_1])
         return np.asarray([normal_0_best, normal_1_best, normal_2_best]), np.asarray([
-            [ro_0, ro_0_], [ro_1, ro_1_], [ro_2, ro_2_]]), np.logical_or(box_inliners_0, box_inliners_1)
+            [ro_0, ro_0_], [ro_1, ro_1_], [ro_2, ro_2_]]), np.logical_or(box_inliners_0, box_inliners_1), (
+                       box_mean_0 + box_mean_1) / 2
     else:
         return np.asarray([normal_0_best, normal_1_best, normal_2_best]), np.asarray([
-            [ro_0], [ro_1], [ro_2]]), box_inliners_0
+            [ro_0], [ro_1], [ro_2]]), box_inliners_0, box_mean_0
     # p4, p4_projection = get_random_projection(xyz, normal, ro)
 
 
@@ -319,11 +367,15 @@ def get_most_frequent_ro(normal, points):
 
 
 def box_inliners(points, normal_0, ro_0, normal_1, ro_1, normal_2, ro_2, accuracy):
-    inliners_0 = np.where(abs(np.sum(points * normal_0, axis=1) - ro_0) < accuracy, True, False)
-    inliners_1 = np.where(abs(np.sum(points * normal_1, axis=1) - ro_1) < accuracy, True, False)
-    inliners_2 = np.where(abs(np.sum(points * normal_2, axis=1) - ro_2) < accuracy, True, False)
+    distances = np.empty([points.shape[0], 3])
+    distances[:, 0] = abs(np.sum(points * normal_0, axis=1) - ro_0)
+    distances[:, 1] = abs(np.sum(points * normal_1, axis=1) - ro_1)
+    distances[:, 2] = abs(np.sum(points * normal_2, axis=1) - ro_2)
+    inliners_0 = np.where(distances[:, 0] < accuracy, True, False)
+    inliners_1 = np.where(distances[:, 1] < accuracy, True, False)
+    inliners_2 = np.where(distances[:, 2] < accuracy, True, False)
 
-    return inliners_0, inliners_1, inliners_2
+    return inliners_0, inliners_1, inliners_2, np.min(distances, axis=1)
 
 
 def box_points(normals, ro, inliners):
@@ -404,7 +456,7 @@ def get_best_sphere_model(points, point_to_model_accuracy, number_of_subsets):
             best_center = center
             best_radius = radius
             best_inliners = inliners
-    return best_center, best_radius, best_inliners
+    return best_center, best_radius, best_inliners, best_mean
 
 
 def sphere_fitting(xyz):
@@ -442,9 +494,9 @@ def sphere_fitting(xyz):
 
 
 def sphere_inliners(points, center, radius, point_to_model_accuracy):
-    dif = np.abs(np.sum((center - points) ** 2, axis=1) - radius ** 2)
+    dif = np.sqrt(np.abs(np.sum((center - points) ** 2, axis=1) - radius ** 2))
     accuracy = dif < point_to_model_accuracy
-    mean = np.sum(dif[accuracy]) / np.sum(accuracy)
+    mean = np.mean(dif[accuracy])
     return accuracy, mean
 
 
@@ -473,7 +525,7 @@ def get_best_cylinder_model(points, normals, point_to_model_accuracy, number_of_
             best_score, best_mean = np.sum(inliners), mean
             best_axis, best_radius, best_center_point = axis, radius, center
             best_inliners = inliners
-    return best_axis, best_radius, best_center_point, best_inliners
+    return best_axis, best_radius, best_center_point, best_inliners, best_mean
 
 
 def cylinder_fitting(xyz, xyz_normals):
@@ -530,12 +582,14 @@ def get_best_cone_model(points, normals, point_to_model_accuracy, number_of_subs
     best_inliners = 0
     for _ in range(number_of_subsets):
         apex, axis, alfa = cone_fitting(points, normals)
-        inliners = cone_inliners(points, apex, axis, alfa, point_to_model_accuracy)
+        inliners, mean = cone_inliners(points, apex, axis, alfa, point_to_model_accuracy)
         if np.sum(inliners) > best_score:
             best_score = np.sum(inliners)
             best_apex, best_axis, best_alfa = apex, axis, alfa
             best_inliners = inliners
-    return best_apex, best_axis, best_alfa, best_inliners
+            best_mean = mean
+    print(best_apex, best_axis, math.degrees(best_alfa), np.sum(best_inliners), best_mean)
+    return best_apex, best_axis, best_alfa, best_inliners, best_mean
 
 
 def cone_fitting(xyz, xyz_normals):
@@ -603,8 +657,9 @@ def cone_inliners(points, apex, axis, alfa, point_to_model_accuracy):
     p_a_angles = np.arctan2(p_a_sinang, p_a_cosang)
     p_a_angles = np.where(np.abs(p_a_angles) > math.pi / 2, math.pi - np.abs(p_a_angles), np.abs(p_a_angles))
 
-    errors = np.sin(p_a_angles - alfa) * np.linalg.norm(p_a_vectors)
-    return np.abs(errors) < point_to_model_accuracy
+    errors = np.sin(np.abs(p_a_angles - alfa)) * np.linalg.norm(p_a_vectors)
+    inliners = errors < point_to_model_accuracy
+    return inliners, np.mean(errors[inliners])
 
 
 def cone_points(points, apex, cone_axis, alfa, h_step=0.005, angle_step=math.radians(3)):
@@ -629,6 +684,21 @@ def cone_points(points, apex, cone_axis, alfa, h_step=0.005, angle_step=math.rad
     points += apex
 
     return points
+
+
+def angle_between_normals(n1, n2):
+    """ Returns the angle in radians between vectors 'n1' and 'n2'"""
+    cosang = np.dot(n1, n2)
+    sinang = np.linalg.norm(np.cross(n1, n2))
+    return np.abs(np.arctan2(sinang, cosang))
+
+
+def get_count(number):
+    s = str(number)
+    if '.' in s:
+        return abs(s.find('.') - len(s)) - 1
+    else:
+        return 0
 
 
 def rotate(points, axis, angle):

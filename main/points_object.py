@@ -13,6 +13,9 @@ class PointsObject:
         active_points (numpy.array): shows which points will be active
     """
 
+    def __hash__(self) -> int:
+        return super().__hash__()
+
     def __init__(self):
         self.__xyz = np.zeros([0, 3])
         self.__rgb = np.zeros([0, 3])
