@@ -1,12 +1,14 @@
-from points_object import PointsObject
-import image_processing
 import numpy as np
-import visualization
-import download_point_cloud
-import shape_recognition
 import time
 import random
 import math
+
+from points_object import PointsObject
+import image_processing
+import visualization
+import download_point_cloud
+import shape_recognition
+import moving_prediction
 
 
 def create_mask():
@@ -34,6 +36,7 @@ def save_points_cloud():
     object.set_points(points_cloud, points_color)
     object.save_all_points("Test", "ball")
 
+
 def temp():
     ground_truth_vector = [0, 1, 0]
     vector_model = PointsObject()
@@ -50,6 +53,7 @@ def temp():
 
     visualization.visualize_object([vector_model, vector_model_2])
 
+
 def temp_2():
     import open3d as o3d
     full_model = download_point_cloud.download_to_object("models/blue conus.ply", 3000)
@@ -63,21 +67,32 @@ def temp_2():
     o3d.visualization.draw_geometries([downpcd])
 
 
-
-if __name__ == "__main__":
+def fill_the_shape_part():
     # save_points_cloud()
-    # ball = PointsObject()
-    # ball = download_point_cloud.download_to_object("preDiploma_PC/ball.pcd")
+    ball = PointsObject()
+    ball = download_point_cloud.download_to_object("preDiploma_PC/ball.pcd")
     # visualization.visualize_object([ball])
-    full_model = download_point_cloud.download_to_object("models/blue conus.ply", 3000)
-    full_model.scale(0.2)
-    # full_model.shift([0.09, -0.04, 0.06])
+    full_model = ball
+    # full_model = download_point_cloud.download_to_object("models/blue conus.ply", 3000)
+    # full_model.scale(0.1)
+    # full_model.shift([0.01, 0.05, 0.01])
+    # full_model.rotate([1, 1, 1], math.radians(35))
+    #
+    # full_model_2 = download_point_cloud.download_to_object("models/orange sphere.ply", 3000)
+    # full_model_2.scale(0.1)
+    # full_model_2.shift([-0.1, -0.1, 0.1])
     # full_model.rotate([1, 1, 1], math.radians(60))
+    # full_model.add_points(full_model_2.get_points()[0], full_model_2.get_points()[1])
+    #
+    # full_model_2 = download_point_cloud.download_to_object("models/orange sphere.ply", 3000)
+    # full_model_2.scale(0.1)
+    # full_model_2.shift([-0.01, 0.1, 0.3])
+    # full_model.rotate([1, 0, 1], math.radians(30))
+    # full_model.add_points(full_model_2.get_points()[0], full_model_2.get_points()[1])
+    # visualization.visualize_object([full_model])
 
     # temp()
     # temp_2()
-
-    # visualization.visualize_object([grey_plane])
 
     start = time.time()
     found_shapes = shape_recognition.RANSAC(full_model.get_points()[0], full_model.get_normals())
@@ -88,3 +103,58 @@ if __name__ == "__main__":
         new_shape.add_points(s, np.asarray([[random.random(), random.random(), random.random()]] * s.shape[0]))
         shapes.append(new_shape)
     visualization.visualize_object(shapes)
+
+
+def generate_trajectory(points, trajectory_fun, trajectory_param, ttime):
+    current_points = points.get_points()[0]
+    center = np.mean(current_points, axis=0)
+    shapes_to_return = []
+    center_trajectory = []
+    shifts = trajectory_fun(trajectory_param, ttime)
+    for shift in shifts:
+        current_shape = PointsObject()
+        current_shape.add_points(current_points + shift)
+        shapes_to_return.append(current_shape)
+
+        center_trajectory.append(center + shift)
+    return shapes_to_return, np.asarray(center_trajectory)
+
+
+def generate_func(params=np.array([[], [], []]), ttime=0):
+    trajectory = np.zeros((ttime.shape[0], 3))
+    for i, t in enumerate(ttime):
+        for j in range(3):
+            param = np.array(params[j])
+            powers = np.arange(1, param.shape[0] + 1)
+            trajectory[i, j] = np.sum(param * np.power(t, powers))
+    return trajectory
+
+
+if __name__ == "__main__":
+    # fill_the_shape_part()
+
+    stable_object = download_point_cloud.download_to_object("models/grey plane.ply", 3000)
+    stable_object.scale(0.03)
+    stable_object.rotate([1, 0, 0], math.radians(90))
+
+    falling_object = download_point_cloud.download_to_object("models/orange sphere.ply", 3000)
+    falling_object.scale(0.1)
+    falling_object.shift([0, 0.5, 0])
+
+    # generate_trajectory(falling_object, generate_func, np.array([[1, 2], [], []]))
+    shapes = [stable_object]
+    start = time.time()
+    number_of_steps = 10
+    step_time = 0.1
+    time = np.arange(step_time, (number_of_steps + 1) * step_time, step_time)
+    points_trajectory, center_trajectory = generate_trajectory(falling_object, generate_func,
+                                                               np.array([[], [0, -9.8], []]), time)
+    print(center_trajectory)
+    # for i in range(3):
+    #     found_functions = moving_prediction.find_functions(time, center_trajectory[:, i])
+    found_functions = moving_prediction.find_functions(time, center_trajectory[:, 1])
+
+    ttime = np.arange(step_time, (number_of_steps + 1) * step_time * 2, step_time)
+    moving_prediction.show_found_functions(found_functions, time, center_trajectory[:, 1], ttime)
+    # shapes += points_trajectory
+    # visualization.visualize_object(shapes)
