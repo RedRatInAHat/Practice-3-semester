@@ -118,23 +118,26 @@ def get_future_points(found_functions, tt, zero_shift=0, deviation=''):
     return y
 
 
-def show_gaussians(found_functions, points, t=0, zero_shift=0):
+def show_gaussians(found_functions, t=0, step=.1, zero_shift=0):
     mean, standard_deviation, weights = get_gaussian_params(found_functions, t, zero_shift)
+    p_min, p_max, s_max = np.min(mean), np.max(mean), 4 * np.max(standard_deviation)
+    points = np.arange(p_min - s_max, p_max + s_max, step)
+    if points.shape[0] < 3:
+        points = np.arange(p_min - step, p_max + 2 * step, step)
     all_c = np.zeros(points.shape[0])
     for f, func in enumerate(found_functions):
-        print(mean[f], standard_deviation[f], weights[f])
         d = stats.norm(mean[f], standard_deviation[f])
-        c = d.cdf(points)*weights[f]
+        c = d.cdf(points) * weights[f]
         all_c += c
-        plt.plot(points, c)
-        plt.legend([func])
-        plt.show()
-    plt.plot(points, all_c)
+        # plt.plot(points, c)
+        # plt.legend([func])
+        # plt.show()
+    plt.plot(points, all_c / np.sum(all_c))
     plt.legend("mixture")
     plt.show()
 
 
-def get_gaussian_params(found_functions, t=0, zero_shift=0, threshold_sd = 0.01):
+def get_gaussian_params(found_functions, t=0, zero_shift=0, threshold_sd=0.01):
     mean = get_future_points(found_functions, np.asarray([t]), zero_shift)
     standard_deviation_up = np.absolute(get_future_points(found_functions, np.asarray([t]), zero_shift, 'up') - mean)
     standard_deviation_down = np.absolute(
@@ -146,8 +149,24 @@ def get_gaussian_params(found_functions, t=0, zero_shift=0, threshold_sd = 0.01)
     return mean, standard_deviation, weights
 
 
-# def probability_of_being_between(found_functions, points, t = 0, zero_shift = 0):
-
+def probability_of_being_between(found_functions, t=0, step=0.1, zero_shift=0, align_to_maximum=False):
+    mean, standard_deviation, weights = get_gaussian_params(found_functions, t, zero_shift)
+    p_min, p_max, s_max = np.min(mean), np.max(mean), 4 * np.max(standard_deviation)
+    points = np.arange(p_min - s_max, p_max + s_max, step)
+    if points.shape[0] < 3:
+        points = np.asarray([p_min - s_max - step, p_min - s_max, p_min, p_max + s_max, p_max + step])
+    all_c = np.zeros(points.shape[0])
+    for f, func in enumerate(found_functions):
+        d = stats.norm(mean[f], standard_deviation[f])
+        c = d.cdf(points) * weights[f]
+        all_c += c
+    probabilities = all_c[1:] - all_c[:-1]
+    points_between = points[1:] - (points[1] - points[0])
+    if align_to_maximum:
+        probabilities /= np.max(probabilities)
+    plt.plot(points_between, probabilities)
+    plt.show()
+    return probabilities, points_between
 
 
 def sum_of_the_squares_of_the_residuals(a0, a1):
