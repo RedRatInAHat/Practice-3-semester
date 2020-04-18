@@ -4,7 +4,6 @@ import math
 
 
 def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accuracy=0.01,
-<<<<<<< HEAD
            number_of_points_threshold=500,
            number_of_iterations=10, min_pc_number=300, number_of_subsets=10):
     """RANSAC method for finding parameters of point cloud and it's primitive shape(s)
@@ -12,12 +11,6 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
     While there are points in the point cloud and number of itterations is below threshold algorithm comparing the
     number of inliners of every model and choosing the best one.
 
-=======
-           number_of_points_threshold=300,
-           number_of_iterations=10, min_pc_number=300, number_of_subsets=10):
-    """RANSAC method for finding parameters of point cloud and it's primitive shape(s)
-
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     Args:
         xyz (np.ndarray): points of point cloud in xyz format
         xyz_normals (np.ndarray): normals of corresponding points
@@ -30,11 +23,8 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
     """
     found_shapes = []
     itt = 0
-<<<<<<< HEAD
     if min_pc_number < number_of_points_threshold:
         min_pc_number = number_of_points_threshold
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
 
     while itt < number_of_iterations and xyz.shape[0] > min_pc_number:
         itt += 1
@@ -48,13 +38,6 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             print("box crushed")
             box_inliners = 0
         if np.sum(box_inliners) > number_of_points_threshold:
-<<<<<<< HEAD
-=======
-            # xyz_in = xyz[box_inliners]
-            # found_shapes.append(box_points(box_normals, box_ro, xyz_in))
-            # xyz = xyz[np.bitwise_not(box_inliners)]
-            # xyz_normals = xyz_normals[np.bitwise_not(box_inliners)]
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             box_params = {'parameters': [box_normals, box_ro], 'inliners': box_inliners, 'mean': box_mean,
                           'function': box_points}
             fitted_shapes['box'] = box_params
@@ -70,18 +53,6 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             plane_inliners = 0
 
         if np.sum(plane_inliners) > number_of_points_threshold:
-<<<<<<< HEAD
-=======
-            # xyz_in = xyz[plane_inliners]
-            # # found_shapes.append(plane_points(plane_normal, plane_ro, np.min(xyz_in[:, 0]), np.max(xyz_in[:, 0]),
-            # #                                  np.min(xyz_in[:, 1]), np.max(xyz_in[:, 1]), np.min(xyz_in[:, 2]),
-            # #                                  np.max(xyz_in[:, 2])))
-            # # found_shapes.append(plane_points_free_shape(plane_normal, plane_ro, xyz_in))
-            # found_shapes.append(plane_points_long_one(plane_normal, plane_ro, xyz_in))
-            # # delete found points
-            # xyz = xyz[np.bitwise_not(plane_inliners)]
-            # xyz_normals = xyz_normals[np.bitwise_not(plane_inliners)]
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             plane_params = {'parameters': [plane_normal, plane_ro], 'inliners': plane_inliners, 'mean': plane_mean,
                             'function': plane_points_long_one}
             fitted_shapes['plane'] = plane_params
@@ -95,12 +66,6 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             print('sphere crushed')
             sphere_inliners = 0
         if np.sum(sphere_inliners) > number_of_points_threshold:
-<<<<<<< HEAD
-=======
-            #     found_shapes.append(sphere_points(sphere_center, sphere_radius))
-            #     xyz = xyz[np.bitwise_not(sphere_inliners)]
-            #     xyz_normals = xyz_normals[np.bitwise_not(sphere_inliners)]
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             sphere_params = {'parameters': [sphere_center, sphere_radius], 'inliners': sphere_inliners,
                              'mean': sphere_mean, 'function': sphere_points}
             fitted_shapes['sphere'] = sphere_params
@@ -116,13 +81,6 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             print("cylinder crushed")
             cylinder_inliners = 0
         if np.sum(cylinder_inliners) > number_of_points_threshold:
-<<<<<<< HEAD
-=======
-            #     xyz_in = xyz[cylinder_inliners]
-            #     found_shapes.append(cylinder_points(cylinder_axis, cylinder_radius, cylinder_center, xyz_in))
-            #     xyz = xyz[np.bitwise_not(cylinder_inliners)]
-            #     xyz_normals = xyz_normals[np.bitwise_not(cylinder_inliners)]
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             cylinder_params = {'parameters': [cylinder_axis, cylinder_radius, cylinder_center],
                                'inliners': cylinder_inliners, 'mean': cylinder_mean, 'function': cylinder_points}
             fitted_shapes['cylinder'] = cylinder_params
@@ -139,27 +97,16 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             cone_params = {'parameters': [cone_apex, cone_axis, cone_alfa], 'inliners': cone_inliners,
                            'mean': cone_mean, 'function': cone_points}
             fitted_shapes['cone'] = cone_params
-<<<<<<< HEAD
 
         # choosing the best model
         best_score, best_mean = 0, point_to_model_accuracy * 2
         best_model = None
         for model in fitted_shapes:
-=======
-        #     found_shapes.append(cone_points(xyz[cone_inliners], cone_apex, cone_axis, cone_alfa))
-        #     xyz = xyz[np.bitwise_not(cone_inliners)]
-        #     xyz_normals = xyz_normals[np.bitwise_not(cone_inliners)]
-        best_score, best_mean = 0, point_to_model_accuracy * 2
-        best_model = None
-        for model in fitted_shapes:
-            # print(model, np.sum(fitted_shapes[model]['inliners']))
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             if np.sum(fitted_shapes[model]['inliners']) > best_score or (
                     np.sum(fitted_shapes[model]['inliners']) == best_score and fitted_shapes[model][
                 'mean'] < best_mean):
                 best_model = model
                 best_score, best_mean = np.sum(fitted_shapes[model]['inliners']), fitted_shapes[model]['mean']
-<<<<<<< HEAD
         # if there is any model
         if not best_model == None:
             # if plane is good as well as any rounded model it must be chosen, because other model generate rounded
@@ -175,20 +122,10 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             xyz = xyz[np.logical_not(fitted_shapes[best_model]['inliners'])]
             xyz_normals = xyz_normals[np.logical_not(fitted_shapes[best_model]['inliners'])]
             print(best_model, best_score, best_mean, fitted_shapes[best_model]['parameters'])
-=======
-        function = fitted_shapes[best_model]['function']
-        params = fitted_shapes[best_model]['parameters']
-        inliners = xyz[fitted_shapes[best_model]['inliners']]
-        found_shapes.append(function(params, inliners))
-        xyz = xyz[np.logical_not(fitted_shapes[best_model]['inliners'])]
-        xyz_normals = xyz_normals[np.logical_not(fitted_shapes[best_model]['inliners'])]
-        print(best_model, best_score, best_mean, fitted_shapes[best_model]['parameters'])
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     return found_shapes
 
 
 def get_best_plane_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_normal_accuracy, number_of_subsets):
-<<<<<<< HEAD
     """Finding the best parameters of the plane
 
     Args:
@@ -204,8 +141,6 @@ def get_best_plane_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_no
         best_inliners (nd.asarray): points, corresponding to best plane model
         best_mean (nd.asarray): mean value of distance to model of inliners
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     best_score = 0
     best_mean = point_to_model_accuracy * 2
     # plane fitting
@@ -250,7 +185,6 @@ def plane_fitting_one_point(points, normals):
 
 
 def plane_fitting_three_points(points):
-<<<<<<< HEAD
     """Finding plane model with three points
 
     Args:
@@ -259,8 +193,6 @@ def plane_fitting_three_points(points):
         cp (nd.asarray): normal to the plane model
         d (float): D-parameter of the plane model
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     p = points[np.random.randint(points.shape[0], size=3), :]
     p0, p1, p2 = p
 
@@ -304,7 +236,6 @@ def plane_inliners(points, normals, plane_normal, plane_ro, d_accuracy, a_accura
 
 
 def plane_points_long_one(parameters, points, step=0.01):
-<<<<<<< HEAD
     """ Generating the points of model
 
     Generating points with respect of it's borders.
@@ -316,16 +247,11 @@ def plane_points_long_one(parameters, points, step=0.01):
     Returns:
         xyz (nd.asarray): generated points
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     normal, ro = parameters
     around_points = np.around(points, decimals=get_count(step))
     xyz = np.ones((0, 3))
 
-<<<<<<< HEAD
     # YZ plane case
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     if np.unique(around_points[:, 0]).shape[0] == 1:
         for i, y_value in enumerate(np.unique(around_points[:, 1])):
             min_z, max_z = np.min(points[around_points[:, 1] == y_value, 2]), np.max(
@@ -336,10 +262,7 @@ def plane_points_long_one(parameters, points, step=0.01):
             xy[:, 2] *= z
             xyz = np.vstack((xyz, xy))
         xyz[:, 0] *= points[0, 0]
-<<<<<<< HEAD
     # XZ plane case
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     elif np.unique(around_points[:, 1]).shape[0] == 1:
         for i, x_value in enumerate(np.unique(around_points[:, 0])):
             min_z, max_z = np.min(points[around_points[:, 0] == x_value, 2]), np.max(
@@ -351,10 +274,7 @@ def plane_points_long_one(parameters, points, step=0.01):
             xyz = np.vstack((xyz, xy))
         xyz[:, 1] *= points[0, 1]
     else:
-<<<<<<< HEAD
         # XY plane case
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
         if np.abs(normal[2]) < 1e-5:
             for _, z_value in enumerate(np.unique(around_points[:, 2])):
                 min_y, max_y = np.min(points[around_points[:, 2] == z_value, 1]), np.max(
@@ -365,10 +285,7 @@ def plane_points_long_one(parameters, points, step=0.01):
                 xz[:, 1] *= y
                 xyz = np.vstack((xyz, xz))
             xyz[:, 0] = (ro - normal[2] * xyz[:, 2] - normal[1] * xyz[:, 1]) / normal[0]
-<<<<<<< HEAD
         # XYZ plane case
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
         else:
             for _, x_value in enumerate(np.unique(around_points[:, 0])):
                 min_y, max_y = np.min(points[around_points[:, 0] == x_value, 1]), np.max(
@@ -383,7 +300,6 @@ def plane_points_long_one(parameters, points, step=0.01):
 
 
 def plane_points_free_shape(normal, ro, points, step=0.01):
-<<<<<<< HEAD
     """Generating the points of plane model
 
     The point is applied if it has inliner point in step radius.
@@ -397,8 +313,6 @@ def plane_points_free_shape(normal, ro, points, step=0.01):
     Returns:
         _ (nd.asarray): generated points
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     x = np.arange(np.min(points[:, 0]), np.max(points[:, 0]) + step, step)
     y = np.arange(np.min(points[:, 1]), np.max(points[:, 1]) + step, step)
 
@@ -439,7 +353,6 @@ def plane_points(normal, ro, x_min, x_max, y_min, y_max, z_min, z_max, step=0.01
 
 def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_normal_accuracy,
                        number_of_subsets, full_model=True):
-<<<<<<< HEAD
     """Finding the best parameters of the box
 
     Args:
@@ -456,14 +369,11 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
         _ (nd.asarray): points, corresponding to best box model
         _ (nd.asarray): mean value of distance to model of inliners
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     best_score = 0
     best_mean = point_to_model_accuracy * 2
     normal_0_best, normal_1_best = 0, 0
     # box fitting
     for _ in range(number_of_subsets):
-<<<<<<< HEAD
         # two plane models obtaining
         normal_0, ro_0 = plane_fitting_one_point(xyz, xyz_normals)
         normal_1, ro_1 = plane_fitting_one_point(xyz, xyz_normals)
@@ -473,51 +383,31 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
         # if angle between normals is around 90 degrees
         if math.pi / 2 + 0.01 > np.abs(angle_between_normals(normal_0, normal_1)) > math.pi / 2 - 0.01:
             # get planes inliners
-=======
-        normal_0, ro_0 = plane_fitting_one_point(xyz, xyz_normals)
-        normal_1, ro_1 = plane_fitting_one_point(xyz, xyz_normals)
-
-        if 3.12 > angle_between_normals(normal_0, normal_1) > 0.001:
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             p0_inliners, mean_0 = plane_inliners(xyz, xyz_normals, normal_0, ro_0, point_to_model_accuracy,
                                                  normal_to_normal_accuracy)
             p1_inliners, mean_1 = plane_inliners(xyz, xyz_normals, normal_1, ro_1, point_to_model_accuracy,
                                                  normal_to_normal_accuracy)
-<<<<<<< HEAD
             # get the best two planes model
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
             if np.sum(p0_inliners) + np.sum(p1_inliners) >= best_score and (mean_0 + mean_1) / 2 < best_mean:
                 best_score = np.sum(p0_inliners) + np.sum(p1_inliners)
                 best_mean = (mean_0 + mean_1) / 2
                 normal_0_best = normal_0
                 normal_1_best = normal_1
-<<<<<<< HEAD
     # get the third plane of box
     normal_2 = np.cross(normal_0_best, normal_1_best)
     normal_2_best = normal_2 / np.linalg.norm(normal_2)
     # get planes's D-parameters
-=======
-    normal_2 = np.cross(normal_0_best, normal_1_best)
-    normal_2_best = normal_2 / np.linalg.norm(normal_2)
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     ro_0 = get_most_frequent_ro(normal_0_best, xyz)
     ro_1 = get_most_frequent_ro(normal_1_best, xyz)
     ro_2 = get_most_frequent_ro(normal_2_best, xyz)
 
-<<<<<<< HEAD
     # get inliners and distances of box model
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     inliners_0, inliners_1, inliners_2, distances_0 = box_inliners(xyz, normal_0_best, ro_0, normal_1_best, ro_1,
                                                                    normal_2_best, ro_2, point_to_model_accuracy)
     box_inliners_0 = np.logical_or(np.logical_or(inliners_0, inliners_1), inliners_2)
     box_mean_0 = np.mean(distances_0[box_inliners_0])
 
-<<<<<<< HEAD
     # if points cloud contains all 6 planes obtain other 3 planes the same way
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     if full_model:
         xyz_ = xyz[np.bitwise_not(box_inliners_0)]
         ro_0_ = get_most_frequent_ro(normal_0_best, xyz_)
@@ -533,17 +423,10 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
     else:
         return np.asarray([normal_0_best, normal_1_best, normal_2_best]), np.asarray([
             [ro_0], [ro_1], [ro_2]]), box_inliners_0, box_mean_0
-<<<<<<< HEAD
 
 
 def get_random_projection(points, normal, ro):
     """Getting projection of random point on the plane"""
-=======
-    # p4, p4_projection = get_random_projection(xyz, normal, ro)
-
-
-def get_random_projection(points, normal, ro):
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     point = points[random.randint(0, points.shape[0] - 1)]
     t = ro - np.sum(normal * point)
     projection = normal * t + point
@@ -551,7 +434,6 @@ def get_random_projection(points, normal, ro):
 
 
 def get_most_frequent_ro(normal, points):
-<<<<<<< HEAD
     """Getting the most frequent D-parameter of the plane with the normal
 
     Args:
@@ -560,15 +442,12 @@ def get_most_frequent_ro(normal, points):
     Returns:
         _ (float): D-parameter of the plane
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     all_ro = np.sum(normal * points, axis=1)
     (values, counts) = np.unique(all_ro, return_counts=True)
     return values[np.argmax(counts)]
 
 
 def box_inliners(points, normal_0, ro_0, normal_1, ro_1, normal_2, ro_2, accuracy):
-<<<<<<< HEAD
     """Obtaining inliners of every plane
 
     Args:
@@ -586,8 +465,6 @@ def box_inliners(points, normal_0, ro_0, normal_1, ro_1, normal_2, ro_2, accurac
         inliners_2 (np.ndarray): inliners of the plane_2
         _ (np.ndarray): min distances between points and plane model
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     distances = np.empty([points.shape[0], 3])
     distances[:, 0] = abs(np.sum(points * normal_0, axis=1) - ro_0)
     distances[:, 1] = abs(np.sum(points * normal_1, axis=1) - ro_1)
@@ -596,18 +473,14 @@ def box_inliners(points, normal_0, ro_0, normal_1, ro_1, normal_2, ro_2, accurac
     inliners_1 = np.where(distances[:, 1] < accuracy, True, False)
     inliners_2 = np.where(distances[:, 2] < accuracy, True, False)
 
-<<<<<<< HEAD
     distances[:, 0] = np.where(inliners_0, distances[:, 0], accuracy * 10)
     distances[:, 1] = np.where(inliners_0, distances[:, 1], accuracy * 10)
     distances[:, 2] = np.where(inliners_0, distances[:, 2], accuracy * 10)
 
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     return inliners_0, inliners_1, inliners_2, np.min(distances, axis=1)
 
 
 def box_points(parameters, inliners, step=0.01):
-<<<<<<< HEAD
     """Generating points for box model
 
     Generating points for every of 6 planes of box
@@ -622,23 +495,14 @@ def box_points(parameters, inliners, step=0.01):
     normals, ro = parameters
     if ro.shape[1] == 2:
         # shift model and rotate it along to axises
-=======
-    normals, ro = parameters
-    if ro.shape[1] == 2:
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
         shift = np.mean(inliners, axis=0)
         inliners -= shift
         inliners, new_normals = go_to_standard_axises(normals, inliners)
 
-<<<<<<< HEAD
         # generating new points
         inliners = generate_box_points(inliners, step)
 
         # rotate and shift model to original position
-=======
-        inliners = generate_box_points(inliners, step)
-
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
         inliners, _ = go_to_standard_axises(np.flip(new_normals, 0), inliners, np.flip(normals, 0))
         inliners += shift
 
@@ -648,7 +512,6 @@ def box_points(parameters, inliners, step=0.01):
 
 
 def go_to_standard_axises(normals, inliners, axises=np.asarray([[1, 0, 0], [0, 1, 0], [0, 0, 1]])):
-<<<<<<< HEAD
     """Rotating of the shape along new axises
 
     Args:
@@ -659,8 +522,6 @@ def go_to_standard_axises(normals, inliners, axises=np.asarray([[1, 0, 0], [0, 1
         inliners (np.ndarray): rotated inliners points
         normals (np.ndarray): normals in the new coordinate system
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     for i, axis in enumerate(axises):
         inliners = rotate(inliners, np.cross(axis, normals[i]), angle_between_normals(normals[i], axis))
         normals = rotate(normals, np.cross(axis, normals[i]), angle_between_normals(normals[i], axis))
@@ -668,7 +529,6 @@ def go_to_standard_axises(normals, inliners, axises=np.asarray([[1, 0, 0], [0, 1
 
 
 def generate_box_points(inliners, step=0.01):
-<<<<<<< HEAD
     """Generating points of the box model
 
     For every of 6 planes of the box generate points.
@@ -682,10 +542,6 @@ def generate_box_points(inliners, step=0.01):
     box_points = np.empty([0, 3])
 
     # Find borders of the planes
-=======
-    box_points = np.empty([0, 3])
-
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     x_min, x_max = np.min(inliners[:, 0]), np.max(inliners[:, 0])
     y_min, y_max = np.min(inliners[:, 1]), np.max(inliners[:, 1])
     z_min, z_max = np.min(inliners[:, 2]), np.max(inliners[:, 2])
@@ -694,10 +550,7 @@ def generate_box_points(inliners, step=0.01):
     y = np.arange(y_min, y_max, step)
     z = np.arange(z_min, z_max, step)
 
-<<<<<<< HEAD
     # Generate YZ planes
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     yz = np.empty([y.shape[0] * z.shape[0], 3])
     yz[:, 0] = x_min
     yz[:, 1] = np.repeat(y, z.shape[0])
@@ -708,10 +561,7 @@ def generate_box_points(inliners, step=0.01):
     yz[:, 0] = x_max
     box_points = np.concatenate((box_points, yz))
 
-<<<<<<< HEAD
     # Generate XZ planes
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     xz = np.empty([x.shape[0] * z.shape[0], 3])
     xz[:, 0] = np.repeat(x, z.shape[0])
     xz[:, 1] = y_min
@@ -721,10 +571,7 @@ def generate_box_points(inliners, step=0.01):
     xz[:, 1] = y_max
     box_points = np.concatenate((box_points, xz))
 
-<<<<<<< HEAD
     # Generate XY plane
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     xy = np.empty([x.shape[0] * y.shape[0], 3])
     xy[:, 0] = np.repeat(x, y.shape[0])
     xy[:, 1] = np.tile(y, x.shape[0])
@@ -739,7 +586,6 @@ def generate_box_points(inliners, step=0.01):
 
 
 def get_best_sphere_model(points, point_to_model_accuracy, number_of_subsets):
-<<<<<<< HEAD
     """Getting the best model of sphere
 
     Args:
@@ -753,8 +599,6 @@ def get_best_sphere_model(points, point_to_model_accuracy, number_of_subsets):
         best_inliners (np.ndarray): inliners of the sphere model
         best_mean (np.ndarray): mean error of inliners
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     best_score = best_center = best_radius = best_inliners = 0
     best_mean = point_to_model_accuracy * 2
     for _ in range(number_of_subsets):
@@ -770,7 +614,6 @@ def get_best_sphere_model(points, point_to_model_accuracy, number_of_subsets):
 
 
 def sphere_fitting(xyz):
-<<<<<<< HEAD
     """Getting parameters of the sphere
 
     Getting the parameters of the sphere by four points: https://mathworld.wolfram.com/Circumsphere.html
@@ -781,8 +624,6 @@ def sphere_fitting(xyz):
         center (np.ndarray): center of the sphere model
         radius (float): radius of the sphere model
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     p = xyz[np.random.choice(xyz.shape[0], 4)]
 
     a = np.linalg.det([[p[0, 0], p[0, 1], p[0, 2], 1],
@@ -817,7 +658,6 @@ def sphere_fitting(xyz):
 
 
 def sphere_inliners(points, center, radius, point_to_model_accuracy):
-<<<<<<< HEAD
     """Getting sphere inliners
 
     Evaluate the distance between center and point and find the difference between the distance and the radius
@@ -832,16 +672,12 @@ def sphere_inliners(points, center, radius, point_to_model_accuracy):
         mean (float): mean error of the inliners
     """
     dif = np.abs(np.linalg.norm(center - points, axis=1) - radius)
-=======
-    dif = np.sqrt(np.abs(np.sum((center - points) ** 2, axis=1) - radius ** 2))
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     accuracy = dif < point_to_model_accuracy
     mean = np.mean(dif[accuracy])
     return accuracy, mean
 
 
 def sphere_points(parameters, inliners, step=math.radians(3)):
-<<<<<<< HEAD
     """Generating sphere points
 
     Generates the points of the sphere
@@ -853,8 +689,6 @@ def sphere_points(parameters, inliners, step=math.radians(3)):
     Returns:
         _ (np.ndarray): points of the generated model
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     center, radius = parameters
     theta = np.arange(0, 2 * math.pi + step, step)
     phi = np.arange(0, math.pi + step, step)
@@ -869,7 +703,6 @@ def sphere_points(parameters, inliners, step=math.radians(3)):
 
 
 def get_best_cylinder_model(points, normals, point_to_model_accuracy, number_of_subsets):
-<<<<<<< HEAD
     """Getting the best cylinder model
 
     Args:
@@ -884,8 +717,6 @@ def get_best_cylinder_model(points, normals, point_to_model_accuracy, number_of_
         best_inliners (np.ndarray): inliners of the cylinder model
         best_mean (float): best mean error of inliners
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     best_score = 0
     best_radius = best_center_point = best_axis = 0
     best_mean = point_to_model_accuracy * 2
@@ -901,7 +732,6 @@ def get_best_cylinder_model(points, normals, point_to_model_accuracy, number_of_
 
 
 def cylinder_fitting(xyz, xyz_normals):
-<<<<<<< HEAD
     """ Getting parameters of the cylinder model
 
     Args:
@@ -929,29 +759,12 @@ def cylinder_fitting(xyz, xyz_normals):
     center_point = normals[1] * t + points[1]
 
     # find radius which is the distance between found point belonging to axis and the second point
-=======
-    indexes = np.random.choice(xyz.shape[0], 2)
-    points = xyz[indexes]
-    normals = xyz_normals[indexes]
-    axis = np.cross(normals[0], normals[1])
-    axis /= np.linalg.norm(axis)
-
-    plane_normal = np.cross(axis, normals[0])
-    plane_normal /= np.linalg.norm(plane_normal)
-
-    ro = np.sum(points[0] * plane_normal)
-
-    t = (ro - np.sum(plane_normal * points[1])) / np.sum(plane_normal * normals[1])
-    center_point = normals[1] * t + points[1]
-
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     radius = np.linalg.norm(center_point - points[1])
 
     return axis, radius, center_point
 
 
 def cylinder_inliners(points, axis, radius, center_point, point_to_model_accuracy):
-<<<<<<< HEAD
     """Getting the cylinder inliners
 
     Args:
@@ -961,15 +774,12 @@ def cylinder_inliners(points, axis, radius, center_point, point_to_model_accurac
         center_point (np.ndarray): point belonging to the axis
         point_to_model_accuracy (np.ndarray): max distance threshold between the model and the points
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     distances_dif = np.abs(np.linalg.norm(np.cross((points - center_point), axis), axis=1) - radius)
     inliners = distances_dif < point_to_model_accuracy
     return inliners, np.mean(distances_dif[inliners])
 
 
 def cylinder_points(parameters, inliners, h_step=0.01, angle_step=math.radians(3)):
-<<<<<<< HEAD
     """Generating points of the cylinder
 
     Args:
@@ -988,14 +798,6 @@ def cylinder_points(parameters, inliners, h_step=0.01, angle_step=math.radians(3
     inliners = rotate(inliners, np.cross(axis, cylinder_axis), angle_between_normals(cylinder_axis, axis))
 
     # generate points
-=======
-    cylinder_axis, radius, center = parameters
-    axis = [0, 1, 0]
-
-    inliners -= center
-    inliners = rotate(inliners, np.cross(axis, cylinder_axis), angle_between_normals(cylinder_axis, axis))
-
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     h = np.arange(np.min(inliners[:, 1]), np.max(inliners[:, 1]) + h_step, h_step)
     phi = np.arange(0, math.pi * 2 + angle_step, angle_step)
 
@@ -1005,10 +807,7 @@ def cylinder_points(parameters, inliners, h_step=0.01, angle_step=math.radians(3
     points = np.empty((x.shape[0], 3))
     points[:, 0], points[:, 1], points[:, 2] = x, np.repeat(h, points.shape[0] / h.shape[0]), z
 
-<<<<<<< HEAD
     # return points to original position
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     points = rotate(points, np.cross(cylinder_axis, axis), angle_between_normals(axis, cylinder_axis))
     points += center
 
@@ -1016,7 +815,6 @@ def cylinder_points(parameters, inliners, h_step=0.01, angle_step=math.radians(3
 
 
 def get_best_cone_model(points, normals, point_to_model_accuracy, number_of_subsets):
-<<<<<<< HEAD
     """Getting the best cone model
 
     Args:
@@ -1031,8 +829,6 @@ def get_best_cone_model(points, normals, point_to_model_accuracy, number_of_subs
         best_inliners (np.ndarray): inliners of the cone model
         best_mean (float): mean error of the inliners
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     best_score = 0
     best_apex = best_axis = best_alfa = 0
     best_mean = point_to_model_accuracy * 2
@@ -1049,7 +845,6 @@ def get_best_cone_model(points, normals, point_to_model_accuracy, number_of_subs
 
 
 def cone_fitting(xyz, xyz_normals):
-<<<<<<< HEAD
     """Getting parameters of the cone
 
     Args:
@@ -1060,8 +855,6 @@ def cone_fitting(xyz, xyz_normals):
         axis (np.ndarray): axis vector of the cone model
         alfa (float): opening model of the cone model
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     indexes = np.random.choice(xyz.shape[0], 3)
     points = xyz[indexes]
     normals = xyz_normals[indexes]
@@ -1120,7 +913,6 @@ def cone_fitting(xyz, xyz_normals):
 
 
 def cone_inliners(points, apex, axis, alfa, point_to_model_accuracy):
-<<<<<<< HEAD
     """Getting inliners of the cone model
 
     Args:
@@ -1132,26 +924,18 @@ def cone_inliners(points, apex, axis, alfa, point_to_model_accuracy):
         inliners (np.ndarray): inliners of the cone model
         _ (float): mean axis of the inliners
     """
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     p_a_vectors = points - apex
     p_a_cosang = np.dot(p_a_vectors, axis)
     p_a_sinang = np.linalg.norm(np.cross(p_a_vectors, axis), axis=1)
     p_a_angles = np.arctan2(p_a_sinang, p_a_cosang)
     p_a_angles = np.where(np.abs(p_a_angles) > math.pi / 2, math.pi - np.abs(p_a_angles), np.abs(p_a_angles))
 
-<<<<<<< HEAD
     errors = np.sin(np.abs(p_a_angles - alfa)) * np.linalg.norm(p_a_vectors, axis=1)
-=======
-    vector_len = np.linalg.norm(p_a_vectors, axis = 1)
-    errors = np.sin(np.abs(p_a_angles - alfa)) * np.linalg.norm(p_a_vectors, axis = 1)
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     inliners = errors < point_to_model_accuracy
     return inliners, np.mean(errors[inliners])
 
 
 def cone_points(parameters, points, h_step=0.005, angle_step=math.radians(3)):
-<<<<<<< HEAD
     """Generating points of the cone model
 
     Args:
@@ -1166,20 +950,12 @@ def cone_points(parameters, points, h_step=0.005, angle_step=math.radians(3)):
     axis = [0, 1, 0]
 
     # shift apex to origin and rotate to z-axis
-=======
-    apex, cone_axis, alfa = parameters
-    axis = [0, 1, 0]
-
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     points -= apex
     inliners = rotate(points, np.cross(axis, cone_axis), angle_between_normals(cone_axis, axis))
 
     tan = math.tan(alfa)
 
-<<<<<<< HEAD
     # generate points
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     h = np.arange(np.min(inliners[:, 1]), np.max(inliners[:, 1]), h_step)
     phi = np.arange(0, math.pi * 2 + angle_step, angle_step)
 
@@ -1190,10 +966,7 @@ def cone_points(parameters, points, h_step=0.005, angle_step=math.radians(3)):
     points[:, 0] = tan * points[:, 1] * np.cos(phi)
     points[:, 2] = tan * points[:, 1] * np.sin(phi)
 
-<<<<<<< HEAD
     # return points to original position
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     points = rotate(points, np.cross(cone_axis, axis), angle_between_normals(axis, cone_axis))
     points += apex
 
@@ -1208,10 +981,7 @@ def angle_between_normals(n1, n2):
 
 
 def get_count(number):
-<<<<<<< HEAD
     """Counting numbers after the point"""
-=======
->>>>>>> 09a61b6222e156b65a4b901c33406da29d37e49f
     s = str(number)
     if '.' in s:
         return abs(s.find('.') - len(s)) - 1

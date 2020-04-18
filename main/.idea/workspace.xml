@@ -86,7 +86,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="descriptors" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="Temp" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="Ply_to_cloud" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -98,7 +98,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/descriptors.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Temp.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -132,9 +132,9 @@
       <list>
         <item itemvalue="Python.PreDiploma" />
         <item itemvalue="Python.moving_prediction" />
+        <item itemvalue="Python.Temp" />
         <item itemvalue="Python.NIR 3 semester" />
         <item itemvalue="Python.Practice 3 semester" />
-        <item itemvalue="Python.descriptors" />
       </list>
     </recent_temporary>
   </component>
@@ -155,10 +155,6 @@
     <option featureType="com.intellij.fileTypeFactory" implementationName="*.m" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="275" y="23" key="#Notifications" timestamp="1578391645725">
-      <screen x="0" y="0" width="1366" height="728" />
-    </state>
-    <state x="275" y="23" key="#Notifications/0.0.1366.728@0.0.1366.728" timestamp="1578391645725" />
     <state x="765" y="235" key="#com.intellij.ide.util.MemberChooser" timestamp="1585478757317">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -167,26 +163,22 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="739" y="261" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1582643922578" />
-    <state width="1898" height="281" key="GridCell.Tab.0.bottom" timestamp="1586619167195">
+    <state width="1898" height="281" key="GridCell.Tab.0.bottom" timestamp="1587204460349">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="672" height="162" key="GridCell.Tab.0.bottom/0.0.1366.728@0.0.1366.728" timestamp="1578391652823" />
-    <state width="1898" height="281" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1586619167195" />
-    <state width="1898" height="281" key="GridCell.Tab.0.center" timestamp="1586619167195">
+    <state width="1898" height="281" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1587204460349" />
+    <state width="1898" height="281" key="GridCell.Tab.0.center" timestamp="1587204460349">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="672" height="162" key="GridCell.Tab.0.center/0.0.1366.728@0.0.1366.728" timestamp="1578391652823" />
-    <state width="1898" height="281" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1586619167195" />
-    <state width="1898" height="281" key="GridCell.Tab.0.left" timestamp="1586619167195">
+    <state width="1898" height="281" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1587204460349" />
+    <state width="1898" height="281" key="GridCell.Tab.0.left" timestamp="1587204460349">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="672" height="162" key="GridCell.Tab.0.left/0.0.1366.728@0.0.1366.728" timestamp="1578391652822" />
-    <state width="1898" height="281" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1586619167195" />
-    <state width="1898" height="281" key="GridCell.Tab.0.right" timestamp="1586619167195">
+    <state width="1898" height="281" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1587204460349" />
+    <state width="1898" height="281" key="GridCell.Tab.0.right" timestamp="1587204460349">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="672" height="162" key="GridCell.Tab.0.right/0.0.1366.728@0.0.1366.728" timestamp="1578391652823" />
-    <state width="1898" height="281" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1586619167195" />
+    <state width="1898" height="281" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1587204460349" />
     <state width="1898" height="341" key="GridCell.Tab.1.bottom" timestamp="1586444580681">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -214,7 +206,6 @@
     <state x="655" y="342" key="com.intellij.ide.util.TipDialog" timestamp="1586587878050">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state x="466" y="239" key="com.intellij.ide.util.TipDialog/0.0.1366.728@0.0.1366.728" timestamp="1578390656524" />
     <state x="655" y="342" key="com.intellij.ide.util.TipDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1586587878050" />
     <state x="757" y="208" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1585116326337">
       <screen x="0" y="0" width="1920" height="1040" />

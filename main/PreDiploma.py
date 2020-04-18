@@ -120,13 +120,14 @@ def generate_trajectory(points, trajectory_fun, trajectory_param, ttime):
     return shapes_to_return, np.asarray(center_trajectory)
 
 
-def generate_func(params=np.array([[], [], []]), ttime=0):
+def generate_func(params=np.array([[], [], []]), ttime=[]):
     trajectory = np.zeros((ttime.shape[0], 3))
     for i, t in enumerate(ttime):
         for j in range(3):
             param = np.array(params[j])
             powers = np.arange(1, param.shape[0] + 1)
             trajectory[i, j] = np.sum(param * np.power(t, powers))
+            # trajectory[i, j] = 1 + 0.1/t + 0.001/t**2
     return trajectory
 
 
@@ -143,18 +144,27 @@ if __name__ == "__main__":
 
     # generate_trajectory(falling_object, generate_func, np.array([[1, 2], [], []]))
     shapes = [stable_object]
-    start = time.time()
-    number_of_steps = 10
+    number_of_steps = 6
     step_time = 0.1
-    time = np.arange(step_time, (number_of_steps + 1) * step_time, step_time)
-    points_trajectory, center_trajectory = generate_trajectory(falling_object, generate_func,
-                                                               np.array([[], [0, -9.8], []]), time)
-    print(center_trajectory)
-    # for i in range(3):
-    #     found_functions = moving_prediction.find_functions(time, center_trajectory[:, i])
-    found_functions = moving_prediction.find_functions(time, center_trajectory[:, 1])
+    parameters = np.array([[], [3, -9.8], []])
+    time_ = np.arange(step_time, (number_of_steps + 1) * step_time, step_time)
+    points_trajectory, center_trajectory = generate_trajectory(falling_object, generate_func, parameters, time_)
 
-    ttime = np.arange(step_time, (number_of_steps + 1) * step_time * 2, step_time)
-    moving_prediction.show_found_functions(found_functions, time, center_trajectory[:, 1], ttime)
+    zero_shift = np.copy(center_trajectory[0])
+    center_trajectory -= zero_shift
+
+    start = time.time()
+    found_functions = moving_prediction.find_functions(time_, center_trajectory[:, 1])
+    print(time.time() - start)
+
+    ttime = np.arange(step_time, (number_of_steps + 1) * step_time * 4, step_time / 10)
+    _, real_trajectory = generate_trajectory(falling_object, generate_func, parameters, ttime)
+    moving_prediction.show_found_functions(found_functions, time_, center_trajectory[:, 1], ttime,
+                                           real_trajectory[:, 1], zero_shift[1])
+    # for f, func in enumerate(found_functions):
+    #     print(func, found_functions[func]['error'], found_functions[func]['standard_deviation'])
+
+    x = np.arange(-7, -5, .01)
+    moving_prediction.show_gaussians(found_functions, x, 1., zero_shift[1])
     # shapes += points_trajectory
     # visualization.visualize_object(shapes)
