@@ -2,6 +2,7 @@ import numpy as np
 import time
 import random
 import math
+import matplotlib.colors
 
 from points_object import PointsObject
 import image_processing
@@ -48,7 +49,6 @@ def temp():
     normal = vector_model.get_points()[0][0]
     angle = shape_recognition.angle_between_normals(ground_truth_vector, normal)
     axis = np.cross(ground_truth_vector, normal)
-    # print(np.degrees(angle), axis)
     vector_model.rotate(axis, angle)
 
     visualization.visualize_object([vector_model, vector_model_2])
@@ -120,7 +120,7 @@ def generate_trajectory(points, trajectory_fun, trajectory_param, ttime):
     return shapes_to_return, np.asarray(center_trajectory)
 
 
-def generate_func(params=np.array([[], [], []]), ttime=[]):
+def generate_func(params=np.array([[], [], []]), ttime=np.asarray([])):
     trajectory = np.zeros((ttime.shape[0], 3))
     for i, t in enumerate(ttime):
         for j in range(3):
@@ -131,33 +131,52 @@ def generate_func(params=np.array([[], [], []]), ttime=[]):
     return trajectory
 
 
+def generate_found_shapes(object, found_centers, probabilities_of_centers, number_of_points = 100):
+    found_shapes = []
+    blue = 0.7
+    hsv = np.ones([probabilities_of_centers.shape[0], 3])
+    hsv[:, 0] = blue - probabilities_of_centers / np.max(probabilities_of_centers) * blue
+    rgb = matplotlib.colors.hsv_to_rgb(hsv)
+
+    center = object.get_center()
+    points = object.get_points()[0]
+    points -= center
+
+    for f, f_center in enumerate(found_centers):
+        current_shape = PointsObject()
+        current_rgb = np.zeros([points.shape[0], 3]) + rgb[f]
+        current_shape.add_points(points + f_center, current_rgb, 100)
+        found_shapes.append(current_shape)
+    return found_shapes
+
+
 if __name__ == "__main__":
     # fill_the_shape_part()
 
     # load the model
     stable_object = download_point_cloud.download_to_object("models/grey plane.ply", 3000)
-    stable_object.scale(0.03)
+    stable_object.scale(0.2)
     stable_object.rotate([1, 0, 0], math.radians(90))
 
     falling_object = download_point_cloud.download_to_object("models/orange sphere.ply", 3000)
-    falling_object.scale(0.1)
-    falling_object.shift([0, 0.5, 0])
+    falling_object.scale(0.4)
+    falling_object.shift([0, 2, 0])
 
     shapes = [stable_object]
 
     # generating parameters and trajectory
-    number_of_steps = 3
-    step_time = 0.1
-    parameters = np.array([[], [3, -9.8], []])
+    number_of_steps = 5
+    step_time = 0.2
+    parameters = np.array([[1, -3], [0, -9.8], []])
     # training data
     time_ = np.arange(step_time, (number_of_steps + 1) * step_time, step_time)
     points_trajectory, center_trajectory = generate_trajectory(falling_object, generate_func, parameters, time_)
     # data to compare
-    ttime = np.arange(step_time, (number_of_steps + 1) * step_time * 4, step_time / 10)
+    ttime = np.arange(step_time, (number_of_steps + 1) * step_time * 1.5, step_time / 10)
     _, real_trajectory = generate_trajectory(falling_object, generate_func, parameters, ttime)
-    # shift data to center
-    zero_shift = np.copy(center_trajectory[0])
-    center_trajectory -= zero_shift
+
+    # add noise
+    center_trajectory += np.random.normal(0, 0.05, center_trajectory.shape)
 
     # find functions for xyz trajectory
     start = time.time()
@@ -167,24 +186,39 @@ if __name__ == "__main__":
     print(time.time() - start)
 
     # show prediction results
-    # moving_prediction.show_found_functions(found_functions_y, time_, center_trajectory[:, 1], ttime,
-    #                                        real_trajectory[:, 1], zero_shift[1])
+    moving_prediction.show_found_functions(found_functions_x, time_, center_trajectory[:, 0], ttime,
+                                           real_trajectory[:, 0])
+    moving_prediction.show_found_functions(found_functions_y, time_, center_trajectory[:, 1], ttime,
+                                           real_trajectory[:, 1])
+    moving_prediction.show_found_functions(found_functions_z, time_, center_trajectory[:, 2], ttime,
+                                           real_trajectory[:, 2])
 
     # estimation probability of being in points in time t
-    time_of_probability = .6
-    moving_prediction.show_gaussians(found_functions_y, .6, .1, zero_shift[1])
-    prob_x, x = moving_prediction.probability_of_being_between(found_functions_x, .6, .1, zero_shift[0], True)
-    prob_y, y = moving_prediction.probability_of_being_between(found_functions_y, .6, .1, zero_shift[1], True)
-    prob_z, z = moving_prediction.probability_of_being_between(found_functions_z, .6, .1, zero_shift[2], True)
+    time_of_probability = 1.6
+    d_x = 0.2
+    # moving_prediction.show_gaussians(found_functions_x, .6, .1)
+    prob_x, x = moving_prediction.probability_of_being_between(found_functions_x, time_of_probability, d_x, True)
+    prob_y, y = moving_prediction.probability_of_being_between(found_functions_y, time_of_probability, d_x, True)
+    prob_z, z = moving_prediction.probability_of_being_between(found_functions_z, time_of_probability, d_x, True)
 
     # create points where probability > threshold_p
-    threshold_p = 0.2
-    points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
-    probabilities = np.array(np.meshgrid(prob_x, prob_y, prob_z)).T.reshape(-1, 3)
+    threshold_p = 0.7
+    prob_x, x = prob_x[prob_x > threshold_p], x[prob_x > threshold_p]
+    prob_y, y = prob_y[prob_y > threshold_p], y[prob_y > threshold_p]
+    prob_z, z = prob_z[prob_z > threshold_p], z[prob_z > threshold_p]
+    if x.shape[0] * y.shape[0] * z.shape[0] > 10000:
+        print("Слишком много точек")
+    else:
+        points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
+        probabilities = np.array(np.meshgrid(prob_x, prob_y, prob_z)).T.reshape(-1, 3)
 
-    high_probabilities = np.where(np.prod(probabilities, axis=1) > threshold_p, True, False)
-    high_probable_points, high_probable_points_probabilities = points[high_probabilities], probabilities[
-        high_probabilities]
-    print(high_probable_points, high_probable_points_probabilities)
-    # shapes += points_trajectory
-    # visualization.visualize_object(shapes)
+        high_probabilities = np.where(np.prod(probabilities, axis=1) >= threshold_p, True, False)
+        high_probable_points, high_probable_points_probabilities = points[high_probabilities], \
+                                                                   np.prod(probabilities, axis=1)[high_probabilities]
+        # print(high_probable_points, np.prod(high_probable_points_probabilities, axis=1))
+        # shapes += points_trajectory
+
+        shapes += generate_found_shapes(falling_object, high_probable_points, high_probable_points_probabilities)
+        time_ = np.asarray([time_of_probability])
+        shapes += generate_trajectory(falling_object, generate_func, parameters, time_)[0]
+        visualization.visualize_object(shapes)

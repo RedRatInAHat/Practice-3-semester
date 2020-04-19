@@ -77,10 +77,10 @@ def find_functions(t, points, threshold_accuracy=1e-01):
     return found_functions
 
 
-def show_found_functions(found_functions, t, points, tt, real_y, zero_shift=0):
-    trajectory = get_future_points(found_functions, tt, zero_shift)
+def show_found_functions(found_functions, t, points, tt, real_y):
+    trajectory = get_future_points(found_functions, tt)
     legend = ["given points", 'ground truth']
-    plt.plot(t, points + zero_shift, 'o', tt, real_y, '-')
+    plt.plot(t, points, 'o', tt, real_y, '-')
     for func, y_ in zip(found_functions, trajectory):
         plt.plot(tt, y_, '--')
         legend.append(func)
@@ -88,12 +88,12 @@ def show_found_functions(found_functions, t, points, tt, real_y, zero_shift=0):
     plt.show()
 
 
-def show_found_functions_with_deviation(found_functions, t, points, tt, real_y, zero_shift=0):
-    trajectory = get_future_points(found_functions, tt, zero_shift)
-    trajectory_up = get_future_points(found_functions, tt, zero_shift, 'up')
-    trajectory_down = get_future_points(found_functions, tt, zero_shift, 'down')
+def show_found_functions_with_deviation(found_functions, t, points, tt, real_y):
+    trajectory = get_future_points(found_functions, tt)
+    trajectory_up = get_future_points(found_functions, tt, 'up')
+    trajectory_down = get_future_points(found_functions, tt, 'down')
     legend = ["given points", 'ground truth']
-    plt.plot(t, points + zero_shift, 'o', tt, real_y, '-')
+    plt.plot(t, points, 'o', tt, real_y, '-')
     for func, y_, y_up, y_down in zip(found_functions, trajectory, trajectory_up, trajectory_down):
         plt.plot(tt, y_, '--')
         legend.append(func)
@@ -102,7 +102,7 @@ def show_found_functions_with_deviation(found_functions, t, points, tt, real_y, 
     plt.show()
 
 
-def get_future_points(found_functions, tt, zero_shift=0, deviation=''):
+def get_future_points(found_functions, tt, deviation=''):
     y = np.zeros((len(found_functions), tt.shape[0]))
     for f_, func in enumerate(found_functions):
         f = found_functions[func]['function']
@@ -112,18 +112,18 @@ def get_future_points(found_functions, tt, zero_shift=0, deviation=''):
         elif deviation == 'down':
             f_p -= found_functions[func]['standard_deviation']
         if "polyfit_model" in func:
-            y[f_] = f(tt, f_p) + zero_shift
+            y[f_] = f(tt, f_p)
         else:
-            y[f_] = generate_func_trajectory(f, f_p, tt) + zero_shift
+            y[f_] = generate_func_trajectory(f, f_p, tt)
     return y
 
 
-def show_gaussians(found_functions, t=0, step=.1, zero_shift=0):
-    mean, standard_deviation, weights = get_gaussian_params(found_functions, t, zero_shift)
+def show_gaussians(found_functions, t=0, step=.1):
+    mean, standard_deviation, weights = get_gaussian_params(found_functions, t)
     p_min, p_max, s_max = np.min(mean), np.max(mean), 4 * np.max(standard_deviation)
     points = np.arange(p_min - s_max, p_max + s_max, step)
     if points.shape[0] < 3:
-        points = np.arange(p_min - step, p_max + 2 * step, step)
+        points = np.asarray([p_min - s_max - step, p_min - s_max, p_max + s_max, p_max + s_max + step])
     all_c = np.zeros(points.shape[0])
     for f, func in enumerate(found_functions):
         d = stats.norm(mean[f], standard_deviation[f])
@@ -137,11 +137,11 @@ def show_gaussians(found_functions, t=0, step=.1, zero_shift=0):
     plt.show()
 
 
-def get_gaussian_params(found_functions, t=0, zero_shift=0, threshold_sd=0.01):
-    mean = get_future_points(found_functions, np.asarray([t]), zero_shift)
-    standard_deviation_up = np.absolute(get_future_points(found_functions, np.asarray([t]), zero_shift, 'up') - mean)
+def get_gaussian_params(found_functions, t=0, threshold_sd=0.2):
+    mean = get_future_points(found_functions, np.asarray([t]))
+    standard_deviation_up = np.absolute(get_future_points(found_functions, np.asarray([t]), 'up') - mean)
     standard_deviation_down = np.absolute(
-        get_future_points(found_functions, np.asarray([t]), zero_shift, 'down') - mean)
+        get_future_points(found_functions, np.asarray([t]), 'down') - mean)
     standard_deviation = np.maximum(standard_deviation_up, standard_deviation_down)
     standard_deviation = np.where(standard_deviation > threshold_sd, standard_deviation, threshold_sd)
     weights = np.ones(len(found_functions))
@@ -149,12 +149,16 @@ def get_gaussian_params(found_functions, t=0, zero_shift=0, threshold_sd=0.01):
     return mean, standard_deviation, weights
 
 
-def probability_of_being_between(found_functions, t=0, step=0.1, zero_shift=0, align_to_maximum=False):
-    mean, standard_deviation, weights = get_gaussian_params(found_functions, t, zero_shift)
+def probability_of_being_between(found_functions, t=0, step=0.1, align_to_maximum=False):
+    mean, standard_deviation, weights = get_gaussian_params(found_functions, t)
     p_min, p_max, s_max = np.min(mean), np.max(mean), 4 * np.max(standard_deviation)
-    points = np.arange(p_min - s_max, p_max + s_max, step)
+    try:
+        points = np.arange(p_min - s_max, p_max + s_max, step)
+    except:
+        step *= 10
+        points = np.arange(p_min - s_max, p_max + s_max, step)
     if points.shape[0] < 3:
-        points = np.asarray([p_min - s_max - step, p_min - s_max, p_min, p_max + s_max, p_max + step])
+        points = np.asarray([p_min - s_max - step, p_min - s_max, p_max + s_max, p_max + s_max + step])
     all_c = np.zeros(points.shape[0])
     for f, func in enumerate(found_functions):
         d = stats.norm(mean[f], standard_deviation[f])
@@ -164,8 +168,6 @@ def probability_of_being_between(found_functions, t=0, step=0.1, zero_shift=0, a
     points_between = points[1:] - (points[1] - points[0])
     if align_to_maximum:
         probabilities /= np.max(probabilities)
-    plt.plot(points_between, probabilities)
-    plt.show()
     return probabilities, points_between
 
 
