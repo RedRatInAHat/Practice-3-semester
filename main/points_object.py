@@ -102,6 +102,8 @@ class PointsObject:
             axis (numpy.array): axis according to which rotation must be done
             angle (numpy.array): angle on which rotation must be done
         """
+        center = self.get_center()
+        self.shift(-center)
         axis = axis / np.sqrt(np.dot(axis, axis))
         a = np.cos(angle / 2.)
         b, c, d = -axis * np.sin(angle / 2.)
@@ -116,6 +118,8 @@ class PointsObject:
         A = np.dot(R, A.T).T
 
         self.__xyz = A[:, :-1]
+
+        self.shift(center)
 
     def shift(self, distance):
         """Linear moving of points of the object

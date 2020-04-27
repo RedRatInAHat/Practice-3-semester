@@ -3,6 +3,7 @@ import time
 import random
 import math
 import matplotlib.colors
+import sys
 
 from points_object import PointsObject
 import image_processing
@@ -10,6 +11,7 @@ import visualization
 import download_point_cloud
 import shape_recognition
 import moving_prediction
+import open3d_icp
 
 
 def create_mask():
@@ -131,7 +133,7 @@ def generate_func(params=np.array([[], [], []]), ttime=np.asarray([])):
     return trajectory
 
 
-def generate_found_shapes(object, found_centers, probabilities_of_centers, number_of_points = 100):
+def generate_found_shapes(object, found_centers, probabilities_of_centers, number_of_points=100):
     found_shapes = []
     blue = 0.7
     hsv = np.ones([probabilities_of_centers.shape[0], 3])
@@ -150,9 +152,7 @@ def generate_found_shapes(object, found_centers, probabilities_of_centers, numbe
     return found_shapes
 
 
-if __name__ == "__main__":
-    # fill_the_shape_part()
-
+def linear_movement():
     # load the model
     stable_object = download_point_cloud.download_to_object("models/grey plane.ply", 3000)
     stable_object.scale(0.2)
@@ -194,12 +194,12 @@ if __name__ == "__main__":
                                            real_trajectory[:, 2])
 
     # estimation probability of being in points in time t
-    time_of_probability = 1.6
+    time_of_probability = 1.
     d_x = 0.2
     # moving_prediction.show_gaussians(found_functions_x, .6, .1)
-    prob_x, x = moving_prediction.probability_of_being_between(found_functions_x, time_of_probability, d_x, True)
-    prob_y, y = moving_prediction.probability_of_being_between(found_functions_y, time_of_probability, d_x, True)
-    prob_z, z = moving_prediction.probability_of_being_between(found_functions_z, time_of_probability, d_x, True)
+    prob_x, x = moving_prediction.probability_of_being_in_point(found_functions_x, time_of_probability, d_x, True)
+    prob_y, y = moving_prediction.probability_of_being_in_point(found_functions_y, time_of_probability, d_x, True)
+    prob_z, z = moving_prediction.probability_of_being_in_point(found_functions_z, time_of_probability, d_x, True)
 
     # create points where probability > threshold_p
     threshold_p = 0.7
@@ -222,3 +222,139 @@ if __name__ == "__main__":
         time_ = np.asarray([time_of_probability])
         shapes += generate_trajectory(falling_object, generate_func, parameters, time_)[0]
         visualization.visualize_object(shapes)
+
+
+def create_rotation_path(object, angles_to_rotate, number_of_points):
+    rotation = np.zeros((number_of_points, 3))
+    trajectory_shifts = np.zeros((number_of_points, 3))
+    source_points = object.get_points()[0]
+    step_time = 0.2
+    parameters = np.array([[0.1, -0.3], [-3], []])
+    ttime = np.arange(step_time, (number_of_points + 1) * step_time, step_time)
+    shifts = generate_func(parameters, ttime)
+    shifts[1:] = shifts[1:] - shifts[:-1]
+    points = []
+    points.append(PointsObject())
+    points[-1].add_points(source_points)
+    for i in range(number_of_points):
+        object.rotate([1, 0, 0], math.radians(angles_to_rotate[0]))
+        object.rotate([0, 1, 0], math.radians(angles_to_rotate[1]))
+        object.rotate([0, 0, 1], math.radians(angles_to_rotate[2]))
+        object.shift(shifts[i])
+        target_points = object.get_points()[0]
+        transformation = open3d_icp.get_transformation_matrix_p2p(source_points, target_points)
+        rotation[i] = moving_prediction.get_angles_from_transformation(transformation[:3, :3])
+        trajectory_shifts[i] = moving_prediction.get_movement_from_transformation(transformation, source_points,
+                                                                                  target_points)
+        source_points = np.copy(target_points)
+        points.append(PointsObject())
+        points[-1].add_points(source_points)
+
+    return np.asarray(rotation), trajectory_shifts, points
+
+
+if __name__ == "__main__":
+    # fill_the_shape_part()
+    # linear_movement()
+
+    # load the model
+    stable_object = download_point_cloud.download_to_object("models/grey plane.ply", 3000)
+    stable_object.scale(0.3)
+    stable_object.rotate([1, 0, 0], math.radians(90))
+
+    falling_object = download_point_cloud.download_to_object("models/red cube.ply", 3000)
+    falling_object.scale(0.4)
+    falling_object.shift([0, 3, 0])
+    falling_object.rotate([1, 0, 0], math.radians(-1))
+    center = falling_object.get_center()
+
+    rotation_agnles, shifts, moving_objects = create_rotation_path(falling_object, [15, 10, 20], 4)
+
+    rotation_from_angles = np.cumsum(rotation_agnles, axis=0)
+    rotation_from_angles = np.vstack((np.zeros(3), rotation_from_angles))
+    trajectory_from_shifts = np.cumsum(shifts, axis=0) + center
+    trajectory_from_shifts = np.vstack((center, trajectory_from_shifts))
+
+    shapes = [stable_object, falling_object]
+    shapes += moving_objects
+    visualization.visualize(shapes)
+    # print(np.min(falling_object.get_points()[0][:, 0]), np.max(falling_object.get_points()[0][:, 0]))
+    # print(np.min(falling_object.get_points()[0][:, 1]), np.max(falling_object.get_points()[0][:, 1]))
+    # print(np.min(falling_object.get_points()[0][:, 2]), np.max(falling_object.get_points()[0][:, 2]))
+
+    number_of_steps = 5
+    step_time = 0.2
+    time_ = np.linspace(step_time, (number_of_steps + 1) * step_time, number_of_steps, endpoint=True)
+    ttime = np.linspace(step_time, (number_of_steps + 1) * step_time * 1.5, number_of_steps * 2, endpoint=True)
+    # find functions for xyz trajectory
+    start = time.time()
+    trajectory_functions_x = moving_prediction.find_functions(time_, trajectory_from_shifts[:, 0])
+    trajectory_functions_y = moving_prediction.find_functions(time_, trajectory_from_shifts[:, 1])
+    trajectory_functions_z = moving_prediction.find_functions(time_, trajectory_from_shifts[:, 2])
+
+    angle_functions_x = moving_prediction.find_functions(time_, rotation_from_angles[:, 0])
+    angle_functions_y = moving_prediction.find_functions(time_, rotation_from_angles[:, 1])
+    angle_functions_z = moving_prediction.find_functions(time_, rotation_from_angles[:, 2])
+    print(time.time() - start)
+
+    time_of_probability = 1.2
+    d_x = 0.1
+    d_angle = 0.5
+    threshold_p = 0.7
+
+    prob_x, x = moving_prediction.probability_of_being_in_point(trajectory_functions_x, time_of_probability, d_x, True)
+    prob_y, y = moving_prediction.probability_of_being_in_point(trajectory_functions_y, time_of_probability, d_x, True)
+    prob_z, z = moving_prediction.probability_of_being_in_point(trajectory_functions_z, time_of_probability, d_x, True)
+
+    prob_x_angle, x_angle = moving_prediction.probability_of_being_in_point(angle_functions_x, time_of_probability,
+                                                                            d_angle, True)
+    prob_y_angle, y_angle = moving_prediction.probability_of_being_in_point(angle_functions_y, time_of_probability,
+                                                                            d_angle, True)
+    prob_z_angle, z_angle = moving_prediction.probability_of_being_in_point(angle_functions_z, time_of_probability,
+                                                                            d_angle, True)
+
+    prediction_object = download_point_cloud.download_to_object("models/red cube.ply", 3000)
+    prediction_object.scale(0.4)
+    prediction_points = prediction_object.get_points()[0]
+
+    x_dict, y_dict, z_dict = moving_prediction.get_xyz_probabilities_from_angles_probabilities(prediction_points,
+                                                                                               x_angle, prob_x_angle,
+                                                                                               y_angle, prob_y_angle,
+                                                                                               z_angle, prob_z_angle,
+                                                                                               d_x, threshold_p)
+
+    x, prob_x, y, prob_y, z, prob_z = moving_prediction.probability_of_all_points(x_dict, y_dict, z_dict, prob_x, x,
+                                                                                  prob_y, y, prob_z, z, threshold_p)
+
+    if x_dict == -1:
+        print("всё сломалось")
+        sys.exit(0)
+
+    # points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
+    # probabilities = np.array(np.meshgrid(prob_x, prob_y, prob_z)).T.reshape(-1, 3)
+    #
+    # high_probabilities = np.where(np.prod(probabilities, axis=1) >= threshold_p, True, False)
+    # high_probable_points, high_probable_points_probabilities = points[high_probabilities], \
+    #                                                            np.prod(probabilities, axis=1)[high_probabilities]
+    #
+    # shapes += generate_found_shapes(falling_object, high_probable_points, high_probable_points_probabilities)
+    # visualization.visualize_object(shapes)
+
+    # real_trajectory = np.zeros((ttime.shape[0], 3))
+    # real_trajectory -= np.asarray([15, 10, 20])
+    # # show prediction results
+    # moving_prediction.show_found_functions(angle_functions_x, time_, rotation_from_angles[:, 0], ttime,
+    #                                        real_trajectory[:, 0])
+    # moving_prediction.show_found_functions(angle_functions_y, time_, rotation_from_angles[:, 1], ttime,
+    #                                        real_trajectory[:, 1])
+    # moving_prediction.show_found_functions(angle_functions_z, time_, rotation_from_angles[:, 2], ttime,
+    #                                        real_trajectory[:, 2])
+
+    #
+    # transformation = open3d_icp.get_transformation_matrix_p2p(points_1, points_2)
+    # print(transformation)
+    #
+    # print(moving_prediction.get_angles_from_transformation(transformation[:3, :3]))
+    # print(moving_prediction.get_movement_from_transformation(transformation, points_1, points_2))
+    # print(moving_prediction.get_movement_from_icp(transformation, points_1, points_2,
+    #                                               open3d_icp.get_transformation_matrix_p2p))

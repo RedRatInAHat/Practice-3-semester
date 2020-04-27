@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy import stats
+from scipy.spatial.transform import Rotation as R
 import time
 
 from set_of_math_functions import *
@@ -149,11 +150,12 @@ def get_gaussian_params(found_functions, t=0, threshold_sd=0.2):
     return mean, standard_deviation, weights
 
 
-def probability_of_being_between(found_functions, t=0, step=0.1, align_to_maximum=False):
-    mean, standard_deviation, weights = get_gaussian_params(found_functions, t)
+def probability_of_being_in_point(found_functions, t=0, step=0.1, align_to_maximum=False):
+    mean, standard_deviation, weights = get_gaussian_params(found_functions, t, step)
     p_min, p_max, s_max = np.min(mean), np.max(mean), 4 * np.max(standard_deviation)
+    p_min = round((p_min - s_max) / step) * step - step / 2
     try:
-        points = np.arange(p_min - s_max, p_max + s_max, step)
+        points = np.arange(p_min, p_max + s_max, step)
     except:
         step *= 10
         points = np.arange(p_min - s_max, p_max + s_max, step)
@@ -165,10 +167,159 @@ def probability_of_being_between(found_functions, t=0, step=0.1, align_to_maximu
         c = d.cdf(points) * weights[f]
         all_c += c
     probabilities = all_c[1:] - all_c[:-1]
-    points_between = points[1:] - (points[1] - points[0])
+    points_between = points[1:] - (step / 2)
     if align_to_maximum:
         probabilities /= np.max(probabilities)
+    # plt.plot(points_between, probabilities, '--')
+    # plt.show()
     return probabilities, points_between
+
+
+def get_angles_from_transformation(transformation_matrix):
+    r = R.from_matrix(transformation_matrix)
+    return r.as_euler('xyz', degrees=True)
+
+
+def get_movement_from_transformation(transformation_matrix, source, target):
+    point = np.asarray([0, 0, 0, 1])
+    point = np.ones([4])
+    point = np.dot(transformation_matrix, point.T).T
+    rotation_only = np.copy(transformation_matrix)[:3, :3]
+    new_source = np.dot(rotation_only, source.T).T
+    # print(np.mean(new_source, axis=0), np.mean(source, axis=0), np.mean(target, axis=0))
+    # print(np.mean(new_source, axis=0) - np.mean(source, axis=0))
+    final_movement = transformation_matrix[:3, 3] + (np.mean(new_source, axis=0) - np.mean(source, axis=0))
+    return final_movement
+
+
+def get_movement_from_icp(transformation_matrix, source, target, icp):
+    rotation_transformation = np.copy(transformation_matrix)
+    rotation_transformation[:3, 3] = 0
+    source_points = np.ones([source.shape[0], 4])
+    source_points[:, :3] = source
+    new_source = np.dot(rotation_transformation, source_points.T).T[:, :3]
+    new_transformation = icp(new_source, target)
+    return new_transformation
+
+
+def get_xyz_probabilities_from_angles_probabilities(object_points, x_angles, x_prob, y_angles, y_prob, z_angles, z_prob,
+                                                    round_step, threshold_p=0.5):
+    x_prob, x_angles = x_prob[x_prob > threshold_p], x_angles[x_prob > threshold_p]
+    y_prob, y_angles = y_prob[y_prob > threshold_p], y_angles[y_prob > threshold_p]
+    z_prob, z_angles = z_prob[z_prob > threshold_p], z_angles[z_prob > threshold_p]
+
+    if x_angles.shape[0] * y_angles.shape[0] * z_angles.shape[0] > 10000:
+        print("Слишком много точек")
+        return -1, -1, -1
+    else:
+        angles = np.array(np.meshgrid(x_angles, y_angles, z_angles)).T.reshape(-1, 3)
+        probabilities = np.array(np.meshgrid(x_prob, y_prob, z_prob)).T.reshape(-1, 3)
+        high_probabilities = np.where(np.prod(probabilities, axis=1) >= threshold_p, True, False)
+        high_probable_angles, high_probable_points_probabilities = angles[high_probabilities], \
+                                                                   probabilities[high_probabilities]
+        x_dict = {}
+        y_dict = {}
+        z_dict = {}
+        for a, angles in enumerate(high_probable_angles):
+            r = R.from_euler('xyz', angles, degrees=True)
+            new_points = r.apply(object_points)
+            new_points = np.round(new_points / round_step) * round_step
+            x_dict = sum_probabilities_of_same_points(x_dict, new_points[:, 0],
+                                                      high_probable_points_probabilities[a, 0])
+            y_dict = sum_probabilities_of_same_points(y_dict, new_points[:, 1],
+                                                      high_probable_points_probabilities[a, 1])
+            z_dict = sum_probabilities_of_same_points(z_dict, new_points[:, 2],
+                                                      high_probable_points_probabilities[a, 2])
+        return x_dict, y_dict, z_dict
+
+
+def probability_of_all_points(dict_x, dict_y, dict_z, prob_x, x, prob_y, y, prob_z, z, threshold_p):
+    points_x = np.fromiter(dict_x.keys(), dtype=float)
+    points_x_prob = np.fromiter(dict_x.values(), dtype=float)
+    points_x_prob /= np.max(points_x_prob)
+    points_y = np.fromiter(dict_y.keys(), dtype=float)
+    points_y_prob = np.fromiter(dict_y.values(), dtype=float)
+    points_y_prob /= np.max(points_y_prob)
+    points_z = np.fromiter(dict_z.keys(), dtype=float)
+    points_z_prob = np.fromiter(dict_z.values(), dtype=float)
+    points_z_prob /= np.max(points_z_prob)
+
+    # print(np.asarray(list(zip(points_x, points_x_prob))))
+    # print(np.asarray(list(zip(points_y, points_y_prob))))
+    # print(np.asarray(list(zip(points_z, points_z_prob))))
+
+    dict_x = {}
+    dict_y = {}
+    dict_z = {}
+
+    points_x_prob, points_x = points_x_prob[points_x_prob > threshold_p], points_x[points_x_prob > threshold_p]
+    points_y_prob, points_y = points_y_prob[points_y_prob > threshold_p], points_y[points_y_prob > threshold_p]
+    points_z_prob, points_z = points_z_prob[points_z_prob > threshold_p], points_z[points_z_prob > threshold_p]
+
+    prob_x, x = prob_x[prob_x > threshold_p], x[prob_x > threshold_p]
+    prob_y, y = prob_y[prob_y > threshold_p], y[prob_y > threshold_p]
+    prob_z, z = prob_z[prob_z > threshold_p], z[prob_z > threshold_p]
+
+    print(np.asarray(list(zip(x, prob_x))).shape)
+    print(np.asarray(list(zip(y, prob_y))).shape)
+    print(np.asarray(list(zip(z, prob_z))).shape)
+
+    print(np.asarray(list(zip(points_x, points_x_prob))).shape)
+    print(np.asarray(list(zip(points_y, points_y_prob))).shape)
+    print(np.asarray(list(zip(points_z, points_z_prob))).shape)
+
+    for xx, x_point in enumerate(x):
+        dict_x = sum_dif_probabilities_of_same_points(dict_x, points_x + x_point, points_x_prob * prob_x[xx])
+    for yy, y_point in enumerate(y):
+        dict_y = sum_dif_probabilities_of_same_points(dict_y, points_y + y_point, points_y_prob * prob_y[yy])
+    for zz, z_point in enumerate(z):
+        dict_z = sum_dif_probabilities_of_same_points(dict_z, points_z + z_point, points_z_prob * prob_z[zz])
+
+    points_x = np.fromiter(dict_x.keys(), dtype=float)
+    points_x_prob = np.fromiter(dict_x.values(), dtype=float)
+    points_x_prob /= np.max(points_x_prob)
+    points_y = np.fromiter(dict_y.keys(), dtype=float)
+    points_y_prob = np.fromiter(dict_y.values(), dtype=float)
+    points_y_prob /= np.max(points_y_prob)
+    points_z = np.fromiter(dict_z.keys(), dtype=float)
+    points_z_prob = np.fromiter(dict_z.values(), dtype=float)
+    points_z_prob /= np.max(points_z_prob)
+
+    return points_x, points_x_prob, points_y, points_y_prob, points_z, points_z_prob
+
+def sum_probabilities_of_same_points(dict, points, probability):
+    # model 1
+    # for p in points:
+    #     try:
+    #         dict[p] += probability
+    #     except:
+    #         dict[p] = probability
+
+    # model 2
+    for p in points:
+        try:
+            dict[p] = np.max(dict[p], probability)
+        except:
+            dict[p] = probability
+
+    return dict
+
+
+def sum_dif_probabilities_of_same_points(dict, points, probability):
+    # model 1
+    # for p_, point in enumerate(points):
+    #     try:
+    #         dict[point] += probability[p_]
+    #     except:
+    #         dict[point] = probability[p_]
+    # model 2
+    for p_, point in enumerate(points):
+        try:
+            dict[point] = np.max(dict[point], probability[p_])
+        except:
+            dict[point] = probability[p_]
+
+    return dict
 
 
 def sum_of_the_squares_of_the_residuals(a0, a1):
