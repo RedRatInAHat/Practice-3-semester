@@ -57,20 +57,21 @@ def find_functions(t, points, threshold_accuracy=1e-01):
             found_functions["polyfit_model" + str(i)] = {'function': generate_poly_trajectory,
                                                          'function_params': poly_params, 'error': mean_error,
                                                          'standard_deviation': poly_sd}
-    functions = get_all_functions()
-    for f, func in enumerate(functions):
-        try:
-            func_params, func_sd = trajectory_fun_fitting(t, points, func, functions[func])
-            y_ = generate_func_trajectory(func, func_params, t)
-            if np.sum(np.isnan(y_)) > 0:
-                continue
-            mean_error = sum_of_the_squares_of_the_residuals(points, y_) / points.shape[0]
-            if mean_error < threshold_accuracy and not np.any(np.isinf(func_sd)):
-                found_functions["curve_fit_model" + str(f)] = {'function': func,
-                                                               'function_params': func_params, 'error': mean_error,
-                                                               'standard_deviation': func_sd}
-        except:
-            pass
+    # use additional functions
+    # functions = get_all_functions()
+    # for f, func in enumerate(functions):
+    #     try:
+    #         func_params, func_sd = trajectory_fun_fitting(t, points, func, functions[func])
+    #         y_ = generate_func_trajectory(func, func_params, t)
+    #         if np.sum(np.isnan(y_)) > 0:
+    #             continue
+    #         mean_error = sum_of_the_squares_of_the_residuals(points, y_) / points.shape[0]
+    #         if mean_error < threshold_accuracy and not np.any(np.isinf(func_sd)):
+    #             found_functions["curve_fit_model" + str(f)] = {'function': func,
+    #                                                            'function_params': func_params, 'error': mean_error,
+    #                                                            'standard_deviation': func_sd}
+    #     except:
+    #         pass
 
     if not found_functions:
         print('function wasn\'t found')
@@ -260,13 +261,13 @@ def probability_of_all_points(dict_x, dict_y, dict_z, prob_x, x, prob_y, y, prob
     prob_y, y = prob_y[prob_y > threshold_p], y[prob_y > threshold_p]
     prob_z, z = prob_z[prob_z > threshold_p], z[prob_z > threshold_p]
 
-    print(np.asarray(list(zip(x, prob_x))).shape)
-    print(np.asarray(list(zip(y, prob_y))).shape)
-    print(np.asarray(list(zip(z, prob_z))).shape)
+    print(np.asarray(list(zip(x, prob_x))))
+    print(np.asarray(list(zip(y, prob_y))))
+    print(np.asarray(list(zip(z, prob_z))))
 
-    print(np.asarray(list(zip(points_x, points_x_prob))).shape)
-    print(np.asarray(list(zip(points_y, points_y_prob))).shape)
-    print(np.asarray(list(zip(points_z, points_z_prob))).shape)
+    print(np.asarray(list(zip(points_x, points_x_prob))))
+    print(np.asarray(list(zip(points_y, points_y_prob))))
+    print(np.asarray(list(zip(points_z, points_z_prob))))
 
     for xx, x_point in enumerate(x):
         dict_x = sum_dif_probabilities_of_same_points(dict_x, points_x + x_point, points_x_prob * prob_x[xx])
@@ -288,6 +289,7 @@ def probability_of_all_points(dict_x, dict_y, dict_z, prob_x, x, prob_y, y, prob
     return points_x, points_x_prob, points_y, points_y_prob, points_z, points_z_prob
 
 def sum_probabilities_of_same_points(dict, points, probability):
+    points = np.round(points, 2)
     # model 1
     # for p in points:
     #     try:
@@ -306,6 +308,7 @@ def sum_probabilities_of_same_points(dict, points, probability):
 
 
 def sum_dif_probabilities_of_same_points(dict, points, probability):
+    points = np.round(points, 2)
     # model 1
     # for p_, point in enumerate(points):
     #     try:
