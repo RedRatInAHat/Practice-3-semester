@@ -1,5 +1,5 @@
 import numpy as np
-import math
+from scipy.spatial.transform import Rotation as R
 
 
 class PointsObject:
@@ -95,7 +95,7 @@ class PointsObject:
     def moving(self, moving):
         self.__moving = moving
 
-    def rotate(self, axis, angle):
+    def rotate(self, angles):
         """Rotating points of the object
 
         Args:
@@ -104,21 +104,8 @@ class PointsObject:
         """
         center = self.get_center()
         self.shift(-center)
-        axis = axis / np.sqrt(np.dot(axis, axis))
-        a = np.cos(angle / 2.)
-        b, c, d = -axis * np.sin(angle / 2.)
-        R = np.array([[a * a + b * b - c * c - d * d, 2 * (b * c - a * d), 2 * (b * d + a * c), 0],
-                      [2 * (b * c + a * d), a * a + c * c - b * b - d * d, 2 * (c * d - a * b), 0],
-                      [2 * (b * d - a * c), 2 * (c * d + a * b), a * a + d * d - b * b - c * c, 0],
-                      [0, 0, 0, 1]])
-
-        A = np.zeros((self.__xyz.shape[0], self.__xyz.shape[1] + 1))
-        A[:, :-1] = self.__xyz[:, :]
-
-        A = np.dot(R, A.T).T
-
-        self.__xyz = A[:, :-1]
-
+        r = R.from_euler('xyz', angles, degrees=True)
+        self.__xyz = r.apply(self.__xyz)
         self.shift(center)
 
     def shift(self, distance):
