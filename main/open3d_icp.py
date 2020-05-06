@@ -47,3 +47,12 @@ def get_transformation_matrix_cp2p(source_points, target_points, source_color, t
     o3d.visualization.draw_geometries([source_temp, target_down])
 
     print(result_icp.transformation)
+
+
+def points_cloud_from_images(depth_path, color_path):
+    color = o3d.io.read_image(color_path)
+    depth = o3d.io.read_image(depth_path)
+    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color, depth)
+    print(np.asarray(rgbd_image))
+    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image)
+    print(np.asarray(pcd))

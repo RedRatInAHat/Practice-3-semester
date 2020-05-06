@@ -5,6 +5,7 @@ from scipy import stats
 from scipy.spatial.transform import Rotation as R
 import time
 
+import open3d_icp
 from set_of_math_functions import *
 
 
@@ -79,7 +80,7 @@ def find_functions(t, points, threshold_accuracy=1e-01):
     return found_functions
 
 
-def show_found_functions(found_functions, t, points, tt, real_y):
+def show_found_functions(found_functions, t, points, tt, real_y, x_label='', y_label='', title=''):
     trajectory = get_future_points(found_functions, tt)
     legend = ["given points", 'ground truth']
     plt.plot(t, points, 'o', tt, real_y, '-')
@@ -87,6 +88,9 @@ def show_found_functions(found_functions, t, points, tt, real_y):
         plt.plot(tt, y_, '--')
         legend.append(func)
     plt.legend(legend)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
     plt.show()
 
 
@@ -190,6 +194,7 @@ def get_movement_from_transformation(transformation_matrix, source, target):
     # print(np.mean(new_source, axis=0), np.mean(source, axis=0), np.mean(target, axis=0))
     # print(np.mean(new_source, axis=0) - np.mean(source, axis=0))
     final_movement = transformation_matrix[:3, 3] + (np.mean(new_source, axis=0) - np.mean(source, axis=0))
+
     return final_movement
 
 
@@ -200,6 +205,7 @@ def get_movement_from_icp(transformation_matrix, source, target, icp):
     source_points[:, :3] = source
     new_source = np.dot(rotation_transformation, source_points.T).T[:, :3]
     new_transformation = icp(new_source, target)
+
     return new_transformation
 
 
@@ -208,8 +214,6 @@ def get_xyz_probabilities_from_angles_probabilities(object_points, x_angles, x_p
     x_prob, x_angles = x_prob[x_prob > threshold_p], x_angles[x_prob > threshold_p]
     y_prob, y_angles = y_prob[y_prob > threshold_p], y_angles[y_prob > threshold_p]
     z_prob, z_angles = z_prob[z_prob > threshold_p], z_angles[z_prob > threshold_p]
-
-
 
     if x_angles.shape[0] * y_angles.shape[0] * z_angles.shape[0] > 10000:
         print("Слишком много точек")
@@ -264,14 +268,6 @@ def probability_of_all_points(xyz_dict, prob_x, x, prob_y, y, prob_z, z, thresho
 
 def sum_probabilities_of_same_points(dict, points, probability):
     points = np.round(points, 2)
-    # model 1
-    # for p in points:
-    #     try:
-    #         dict[p] += probability
-    #     except:
-    #         dict[p] = probability
-
-    # model 2
     for p in points:
         tuple_p = tuple(p)
         if tuple_p in dict:
@@ -284,13 +280,6 @@ def sum_probabilities_of_same_points(dict, points, probability):
 
 def sum_dif_probabilities_of_same_points(dict, points, probability):
     points = np.round(points, 2)
-    # model 1
-    # for p_, point in enumerate(points):
-    #     try:
-    #         dict[point] += probability[p_]
-    #     except:
-    #         dict[point] = probability[p_]
-    # model 2
     for p_, point in enumerate(points):
         tuple_p = tuple(point)
         if tuple_p in dict:
@@ -308,3 +297,23 @@ def tuple_to_array(tuple_array):
 
 def sum_of_the_squares_of_the_residuals(a0, a1):
     return np.sum((a0 - a1) ** 2)
+
+
+def find_observations(objects, initial_center):
+    found_rotations = np.zeros((len(objects) - 1, 3))
+    found_dt_center_shifts = np.zeros((len(objects) - 1, 3))
+    previous_transformation = np.eye(4)
+    for i in range(len(objects) - 1):
+        source_points = objects[i].get_points()[0]
+        target_points = objects[i + 1].get_points()[0]
+        transformation = open3d_icp.get_transformation_matrix_p2p(source_points, target_points)
+        current_transformation = transformation.dot(previous_transformation)
+        previous_transformation = np.copy(current_transformation)
+        found_rotations[i] = get_angles_from_transformation(current_transformation[:3, :3])
+        found_dt_center_shifts[i] = get_movement_from_transformation(transformation, source_points, target_points)
+    # print(found_dt_rotations, found_dt_center_shifts)
+    found_rotations = np.vstack((np.zeros(3), found_rotations))
+    found_center_shifts = np.zeros((len(objects), 3))
+    found_center_shifts[1:] = np.cumsum(found_dt_center_shifts, axis=0)
+
+    return found_rotations, found_center_shifts + initial_center

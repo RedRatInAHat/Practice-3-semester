@@ -121,7 +121,7 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
             # delete found points from point cloud
             xyz = xyz[np.logical_not(fitted_shapes[best_model]['inliners'])]
             xyz_normals = xyz_normals[np.logical_not(fitted_shapes[best_model]['inliners'])]
-            print(best_model, best_score, best_mean, fitted_shapes[best_model]['parameters'])
+            # print(best_model, best_score, best_mean, fitted_shapes[best_model]['parameters'])
     return found_shapes
 
 
@@ -352,7 +352,7 @@ def plane_points(normal, ro, x_min, x_max, y_min, y_max, z_min, z_max, step=0.01
 
 
 def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_normal_accuracy,
-                       number_of_subsets, full_model=True):
+                       number_of_subsets, full_model=False):
     """Finding the best parameters of the box
 
     Args:
@@ -380,8 +380,9 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
         # angle between plane's normals
         angle = np.abs(angle_between_normals(normal_0, normal_1))
         angle = angle if angle < math.pi / 2 else math.pi - angle
+
         # if angle between normals is around 90 degrees
-        if math.pi / 2 + 0.01 > np.abs(angle_between_normals(normal_0, normal_1)) > math.pi / 2 - 0.01:
+        if math.pi / 2 + 0.1 > np.abs(angle_between_normals(normal_0, normal_1)) > math.pi / 2 - 0.1:
             # get planes inliners
             p0_inliners, mean_0 = plane_inliners(xyz, xyz_normals, normal_0, ro_0, point_to_model_accuracy,
                                                  normal_to_normal_accuracy)
@@ -406,7 +407,6 @@ def get_best_box_model(xyz, xyz_normals, point_to_model_accuracy, normal_to_norm
                                                                    normal_2_best, ro_2, point_to_model_accuracy)
     box_inliners_0 = np.logical_or(np.logical_or(inliners_0, inliners_1), inliners_2)
     box_mean_0 = np.mean(distances_0[box_inliners_0])
-
     # if points cloud contains all 6 planes obtain other 3 planes the same way
     if full_model:
         xyz_ = xyz[np.bitwise_not(box_inliners_0)]
@@ -433,7 +433,7 @@ def get_random_projection(points, normal, ro):
     return point, projection
 
 
-def get_most_frequent_ro(normal, points):
+def get_most_frequent_ro(normal, points, around=3):
     """Getting the most frequent D-parameter of the plane with the normal
 
     Args:
@@ -443,6 +443,7 @@ def get_most_frequent_ro(normal, points):
         _ (float): D-parameter of the plane
     """
     all_ro = np.sum(normal * points, axis=1)
+    all_ro = np.around(all_ro, around)
     (values, counts) = np.unique(all_ro, return_counts=True)
     return values[np.argmax(counts)]
 
@@ -480,7 +481,7 @@ def box_inliners(points, normal_0, ro_0, normal_1, ro_1, normal_2, ro_2, accurac
     return inliners_0, inliners_1, inliners_2, np.min(distances, axis=1)
 
 
-def box_points(parameters, inliners, step=0.01):
+def box_points(parameters, inliners, step=0.02):
     """Generating points for box model
 
     Generating points for every of 6 planes of box
@@ -493,22 +494,20 @@ def box_points(parameters, inliners, step=0.01):
         inliners (np.ndarray): points of the generated model
     """
     normals, ro = parameters
-    if ro.shape[1] == 2:
-        # shift model and rotate it along to axises
-        shift = np.mean(inliners, axis=0)
-        inliners -= shift
-        inliners, new_normals = go_to_standard_axises(normals, inliners)
 
-        # generating new points
-        inliners = generate_box_points(inliners, step)
+    # shift model and rotate it along to axises
+    shift = np.mean(inliners, axis=0)
+    inliners -= shift
+    inliners, new_normals = go_to_standard_axises(normals, inliners)
 
-        # rotate and shift model to original position
-        inliners, _ = go_to_standard_axises(np.flip(new_normals, 0), inliners, np.flip(normals, 0))
-        inliners += shift
+    # generating new points
+    inliners = generate_box_points(inliners, step)
 
-        return inliners
-    if ro.shape[1] == 1:
-        pass
+    # rotate and shift model to original position
+    inliners, _ = go_to_standard_axises(np.flip(new_normals, 0), inliners, np.flip(normals, 0))
+    inliners += shift
+
+    return inliners
 
 
 def go_to_standard_axises(normals, inliners, axises=np.asarray([[1, 0, 0], [0, 1, 0], [0, 0, 1]])):
