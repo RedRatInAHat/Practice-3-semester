@@ -5,7 +5,8 @@ import math
 
 def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accuracy=0.01,
            number_of_points_threshold=500,
-           number_of_iterations=10, min_pc_number=300, number_of_subsets=10):
+           number_of_iterations=10, min_pc_number=300, number_of_subsets=10, use_planes=True, use_box=True,
+           use_sphere=True, use_cylinder=True, use_cone=True):
     """RANSAC method for finding parameters of point cloud and it's primitive shape(s)
 
     While there are points in the point cloud and number of itterations is below threshold algorithm comparing the
@@ -20,6 +21,11 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
         number_of_iterations (int): number of iterations before the best models will be applied as successful
         min_pc_number (int): number of points recognized too small to search for the model
         number_of_subsets (int): number of subsets for detecting shape model
+        use_planes (bool): should RANSAC use plane model
+        use_box (bool): should RANSAC use box model
+        use_sphere (bool): should RANSAC use sphere model
+        use_cylinder (bool): should RANSAC use cylinder model
+        use_cone (bool): should RANSAC use cone
     """
     found_shapes = []
     itt = 0
@@ -30,73 +36,79 @@ def RANSAC(xyz, xyz_normals, point_to_model_accuracy=0.01, normal_to_normal_accu
         itt += 1
         fitted_shapes = {}
         # box code
-        try:
-            box_normals, box_ro, box_inliners, box_mean = get_best_box_model(xyz, xyz_normals, point_to_model_accuracy,
-                                                                             normal_to_normal_accuracy,
-                                                                             number_of_subsets)
-        except:
-            print("box crushed")
-            box_inliners = 0
-        if np.sum(box_inliners) > number_of_points_threshold:
-            box_params = {'parameters': [box_normals, box_ro], 'inliners': box_inliners, 'mean': box_mean,
-                          'function': box_points}
-            fitted_shapes['box'] = box_params
+        if use_box:
+            try:
+                box_normals, box_ro, box_inliners, box_mean = get_best_box_model(xyz, xyz_normals,
+                                                                                 point_to_model_accuracy,
+                                                                                 normal_to_normal_accuracy,
+                                                                                 number_of_subsets)
+            except:
+                print("box crushed")
+                box_inliners = 0
+            if np.sum(box_inliners) > number_of_points_threshold:
+                box_params = {'parameters': [box_normals, box_ro], 'inliners': box_inliners, 'mean': box_mean,
+                              'function': box_points}
+                fitted_shapes['box'] = box_params
 
         # plane_code
-        try:
-            plane_normal, plane_ro, plane_inliners, plane_mean = get_best_plane_model(xyz, xyz_normals,
-                                                                                      point_to_model_accuracy,
-                                                                                      normal_to_normal_accuracy,
-                                                                                      number_of_subsets)
-        except:
-            print("plane crushed")
-            plane_inliners = 0
+        if use_planes:
+            try:
+                plane_normal, plane_ro, plane_inliners, plane_mean = get_best_plane_model(xyz, xyz_normals,
+                                                                                          point_to_model_accuracy,
+                                                                                          normal_to_normal_accuracy,
+                                                                                          number_of_subsets)
+            except:
+                print("plane crushed")
+                plane_inliners = 0
 
-        if np.sum(plane_inliners) > number_of_points_threshold:
-            plane_params = {'parameters': [plane_normal, plane_ro], 'inliners': plane_inliners, 'mean': plane_mean,
-                            'function': plane_points_long_one}
-            fitted_shapes['plane'] = plane_params
+            if np.sum(plane_inliners) > number_of_points_threshold:
+                plane_params = {'parameters': [plane_normal, plane_ro], 'inliners': plane_inliners, 'mean': plane_mean,
+                                'function': plane_points_long_one}
+                fitted_shapes['plane'] = plane_params
 
         # sphere code
-        try:
-            sphere_center, sphere_radius, sphere_inliners, sphere_mean = get_best_sphere_model(xyz,
-                                                                                               point_to_model_accuracy,
-                                                                                               number_of_subsets)
-        except:
-            print('sphere crushed')
-            sphere_inliners = 0
-        if np.sum(sphere_inliners) > number_of_points_threshold:
-            sphere_params = {'parameters': [sphere_center, sphere_radius], 'inliners': sphere_inliners,
-                             'mean': sphere_mean, 'function': sphere_points}
-            fitted_shapes['sphere'] = sphere_params
+        if use_sphere:
+            try:
+                sphere_center, sphere_radius, sphere_inliners, sphere_mean = get_best_sphere_model(xyz,
+                                                                                                   point_to_model_accuracy,
+                                                                                                   number_of_subsets)
+            except:
+                print('sphere crushed')
+                sphere_inliners = 0
+            if np.sum(sphere_inliners) > number_of_points_threshold:
+                sphere_params = {'parameters': [sphere_center, sphere_radius], 'inliners': sphere_inliners,
+                                 'mean': sphere_mean, 'function': sphere_points}
+                fitted_shapes['sphere'] = sphere_params
 
         # cylinder code
-        try:
-            cylinder_axis, cylinder_radius, cylinder_center, cylinder_inliners, cylinder_mean = get_best_cylinder_model(
-                xyz,
-                xyz_normals,
-                point_to_model_accuracy,
-                number_of_subsets)
-        except:
-            print("cylinder crushed")
-            cylinder_inliners = 0
-        if np.sum(cylinder_inliners) > number_of_points_threshold:
-            cylinder_params = {'parameters': [cylinder_axis, cylinder_radius, cylinder_center],
-                               'inliners': cylinder_inliners, 'mean': cylinder_mean, 'function': cylinder_points}
-            fitted_shapes['cylinder'] = cylinder_params
+        if use_cylinder:
+            try:
+                cylinder_axis, cylinder_radius, cylinder_center, cylinder_inliners, cylinder_mean = get_best_cylinder_model(
+                    xyz,
+                    xyz_normals,
+                    point_to_model_accuracy,
+                    number_of_subsets)
+            except:
+                print("cylinder crushed")
+                cylinder_inliners = 0
+            if np.sum(cylinder_inliners) > number_of_points_threshold:
+                cylinder_params = {'parameters': [cylinder_axis, cylinder_radius, cylinder_center],
+                                   'inliners': cylinder_inliners, 'mean': cylinder_mean, 'function': cylinder_points}
+                fitted_shapes['cylinder'] = cylinder_params
 
         # cone code
-        try:
-            cone_apex, cone_axis, cone_alfa, cone_inliners, cone_mean = get_best_cone_model(xyz, xyz_normals,
-                                                                                            point_to_model_accuracy,
-                                                                                            number_of_subsets)
-        except:
-            print('cone crushed')
-            cone_inliners = 0
-        if np.sum(cone_inliners) > number_of_points_threshold:
-            cone_params = {'parameters': [cone_apex, cone_axis, cone_alfa], 'inliners': cone_inliners,
-                           'mean': cone_mean, 'function': cone_points}
-            fitted_shapes['cone'] = cone_params
+        if use_cone:
+            try:
+                cone_apex, cone_axis, cone_alfa, cone_inliners, cone_mean = get_best_cone_model(xyz, xyz_normals,
+                                                                                                point_to_model_accuracy,
+                                                                                                number_of_subsets)
+            except:
+                print('cone crushed')
+                cone_inliners = 0
+            if np.sum(cone_inliners) > number_of_points_threshold:
+                cone_params = {'parameters': [cone_apex, cone_axis, cone_alfa], 'inliners': cone_inliners,
+                               'mean': cone_mean, 'function': cone_points}
+                fitted_shapes['cone'] = cone_params
 
         # choosing the best model
         best_score, best_mean = 0, point_to_model_accuracy * 2
@@ -235,7 +247,7 @@ def plane_inliners(points, normals, plane_normal, plane_ro, d_accuracy, a_accura
     return inliners, np.mean(distances[inliners])
 
 
-def plane_points_long_one(parameters, points, step=0.01):
+def plane_points_long_one(parameters, points, step=0.05):
     """ Generating the points of model
 
     Generating points with respect of it's borders.

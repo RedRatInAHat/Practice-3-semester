@@ -165,7 +165,7 @@ def check_physical_objects_interaction():
     observation_moments = np.arange(0, round(number_of_observations * observation_step_time, 3), observation_step_time)
     future_time = np.arange(0, round(number_of_observations * observation_step_time * 6, 3), observation_step_time)
     # prediciton parameters
-    time_of_probability = 1.
+    time_of_probability = 1.9
     d_x = 0.1
     d_angle = 1
     threshold_p = 0.5
@@ -245,7 +245,7 @@ def check_physical_objects_interaction():
 
     start = time.time()
     probablistic_interaction.create_new_probabilistic_position(high_probable_points, high_probable_points_probabilities,
-                                                               stable_object.get_points()[0])
+                                                               stable_object)
     print(time.time() - start)
 
 
