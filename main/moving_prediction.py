@@ -1,9 +1,8 @@
-import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy import stats
 from scipy.spatial.transform import Rotation as R
-import time
 
 import open3d_icp
 from set_of_math_functions import *
@@ -78,20 +77,6 @@ def find_functions(t, points, threshold_accuracy=1e-01):
         print('function wasn\'t found')
 
     return found_functions
-
-
-def show_found_functions(found_functions, t, points, tt, real_y, x_label='', y_label='', title=''):
-    trajectory = get_future_points(found_functions, tt)
-    legend = ["given points", 'ground truth']
-    plt.plot(t, points, 'o', tt, real_y, '-')
-    for func, y_ in zip(found_functions, trajectory):
-        plt.plot(tt, y_, '--')
-        legend.append(func)
-    plt.legend(legend)
-    plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.show()
 
 
 def show_found_functions_with_deviation(found_functions, t, points, tt, real_y):
@@ -209,7 +194,7 @@ def get_movement_from_icp(transformation_matrix, source, target, icp):
     return new_transformation
 
 
-def get_xyz_probabilities_from_angles_probabilities(object_points, x_angles, x_prob, y_angles, y_prob, z_angles, z_prob,
+def get_xyz_probabilities_from_angles_probabilities_v0(object_points, x_angles, x_prob, y_angles, y_prob, z_angles, z_prob,
                                                     round_step, threshold_p=0.5):
     x_prob, x_angles = x_prob[x_prob > threshold_p], x_angles[x_prob > threshold_p]
     y_prob, y_angles = y_prob[y_prob > threshold_p], y_angles[y_prob > threshold_p]
@@ -223,18 +208,47 @@ def get_xyz_probabilities_from_angles_probabilities(object_points, x_angles, x_p
         probabilities = np.array(np.meshgrid(x_prob, y_prob, z_prob)).T.reshape(-1, 3)
         high_probabilities = np.where(np.prod(probabilities, axis=1) >= threshold_p, True, False)
         high_probable_angles, high_probable_points_probabilities = angles[high_probabilities], \
-                                                                   probabilities[high_probabilities]
+                                                                   np.prod(probabilities, axis=1)[high_probabilities]
         xyz_dict = {}
 
         for a, angles in enumerate(high_probable_angles):
             r = R.from_euler('xyz', angles, degrees=True)
             new_points = r.apply(object_points)
             new_points = np.round(new_points / round_step) * round_step
-            xyz_dict = sum_probabilities_of_same_points(xyz_dict, new_points, high_probable_points_probabilities[a, 0])
+            xyz_dict = sum_probabilities_of_same_points(xyz_dict, new_points, high_probable_points_probabilities[a])
         return xyz_dict
 
 
-def probability_of_all_points(xyz_dict, prob_x, x, prob_y, y, prob_z, z, threshold_p):
+def get_xyz_probabilities_from_angles_probabilities(object_points, x_angles, x_prob, y_angles, y_prob, z_angles,
+                                                       z_prob, round_step, threshold_p=0.5):
+    x_prob, x_angles = x_prob[x_prob > threshold_p], x_angles[x_prob > threshold_p]
+    y_prob, y_angles = y_prob[y_prob > threshold_p], y_angles[y_prob > threshold_p]
+    z_prob, z_angles = z_prob[z_prob > threshold_p], z_angles[z_prob > threshold_p]
+
+    if x_angles.shape[0] * y_angles.shape[0] * z_angles.shape[0] > 10000:
+        print("Слишком много точек")
+        return -1
+    else:
+        angles = np.array(np.meshgrid(x_angles, y_angles, z_angles)).T.reshape(-1, 3)
+        probabilities = np.array(np.meshgrid(x_prob, y_prob, z_prob)).T.reshape(-1, 3)
+        high_probabilities = np.where(np.prod(probabilities, axis=1) >= threshold_p, True, False)
+        high_probable_angles, high_probable_points_probabilities = angles[high_probabilities], \
+                                                                   np.prod(probabilities, axis=1)[high_probabilities]
+
+    df = pd.DataFrame(columns=['x', 'y', 'z', 'p'])
+
+    for a, angles in enumerate(high_probable_angles):
+        r = R.from_euler('xyz', angles, degrees=True)
+        new_points = np.round(r.apply(object_points) / round_step) * round_step
+        temp = pd.DataFrame(
+            data=np.column_stack((new_points, np.full(new_points.shape[0], high_probable_points_probabilities[a]))),
+            columns=['x', 'y', 'z', 'p'])
+        df = df.append(temp, ignore_index=True)
+    xyzp = df.round(2).groupby(['x', 'y', 'z']).max().reset_index().to_numpy()
+    return xyzp[:, :3], xyzp[:, 3]
+
+
+def probability_of_all_points_v0(xyz_dict, prob_x, x, prob_y, y, prob_z, z, threshold_p):
     points = np.fromiter(xyz_dict.keys(), dtype=np.dtype('float, float, float'))
     points_prob = np.fromiter(xyz_dict.values(), dtype=float)
     points_prob /= np.max(points_prob)
@@ -266,6 +280,28 @@ def probability_of_all_points(xyz_dict, prob_x, x, prob_y, y, prob_z, z, thresho
     return points, probabilities
 
 
+def probability_of_all_points(points, probabilities, prob_x, x, prob_y, y, prob_z, z, threshold_p):
+
+    probabilities, points = probabilities[probabilities > threshold_p], points[probabilities > threshold_p]
+
+    prob_x, x = prob_x[prob_x > threshold_p], x[prob_x > threshold_p]
+    prob_y, y = prob_y[prob_y > threshold_p], y[prob_y > threshold_p]
+    prob_z, z = prob_z[prob_z > threshold_p], z[prob_z > threshold_p]
+
+    center_points = np.array(np.meshgrid(x, y, z)).T.reshape(-1, 3)
+    center_probabilities = np.prod(np.array(np.meshgrid(prob_x, prob_y, prob_z)).T.reshape(-1, 3), axis=1)
+
+    df = pd.DataFrame(columns=['x', 'y', 'z', 'p'])
+
+    for c, center in enumerate(center_points):
+        temp = pd.DataFrame(
+            data=np.column_stack((points + center, probabilities * center_probabilities[c])),
+            columns=['x', 'y', 'z', 'p'])
+        df = df.append(temp, ignore_index=True)
+    xyzp = df.round(2).groupby(['x', 'y', 'z']).max().reset_index().to_numpy()
+    return xyzp[:, :3], xyzp[:, 3]
+
+
 def sum_probabilities_of_same_points(dict, points, probability):
     points = np.round(points, 2)
     for p in points:
@@ -286,6 +322,17 @@ def sum_dif_probabilities_of_same_points(dict, points, probability):
             dict[tuple_p] = np.max([dict[tuple_p], probability[p_]])
         else:
             dict[tuple_p] = probability[p_]
+
+    return dict
+
+
+def sum_dif_probabilities_of_one_type(dict, points, probability):
+    points = np.round(points, 2)
+    for p_, point in enumerate(points):
+        if point in dict:
+            dict[point] = np.max([dict[point], probability[p_]])
+        else:
+            dict[point] = probability[p_]
 
     return dict
 

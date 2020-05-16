@@ -3,6 +3,7 @@ import matplotlib.colors
 
 from points_object import PointsObject
 import image_processing
+import vrep_functions
 
 
 def generate_func(params, ttime):
@@ -41,26 +42,30 @@ def save_point_cloud_from_images():
 
 
 def save_point_cloud_from_VREP():
-    import vrep_functions
-    import image_processing
-
-    """Function for checking if vrep_functions and PointsObject are working fine"""
-    client_id = vrep_functions.vrep_connection()
-    vrep_functions.vrep_start_sim(client_id)
-    kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
-    kinect_depth_id = vrep_functions.get_object_id(client_id, 'kinect_depth')
-    depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
-    image_processing.save_image(rgb_im, "preDiploma_PC/", 0, "rgb_box_")
-    image_processing.save_image(depth_im, "preDiploma_PC/", 0, "depth_box_")
-
-    print(depth_im.shape, rgb_im.shape)
-    vrep_functions.vrep_stop_sim(client_id)
+    depth_im, rgb_im = save_images_from_VREP("preDiploma_PC/")
 
     depth, rgb = image_processing.calculate_point_cloud(rgb_im, depth_im)
 
     current_object = PointsObject()
     current_object.add_points(depth, rgb)
     current_object.save_all_points("preDiploma_PC/", "box")
+
+
+def save_images_from_VREP(path="3d_map/"):
+    client_id = vrep_functions.vrep_connection()
+    vrep_functions.vrep_start_sim(client_id)
+    kinect_rgb_id = vrep_functions.get_object_id(client_id, 'kinect_rgb')
+    kinect_depth_id = vrep_functions.get_object_id(client_id, 'kinect_depth')
+    depth_im, rgb_im = vrep_functions.vrep_get_kinect_images(client_id, kinect_rgb_id, kinect_depth_id)
+
+    depth_im, rgb_im = np.flip(depth_im, (0)), np.flip(rgb_im, (0))
+
+    vrep_functions.vrep_stop_sim(client_id)
+
+    image_processing.save_image(rgb_im, path, 0, "room_rgb")
+    image_processing.save_image(depth_im, path, 0, "room_depth")
+    return depth_im, rgb_im
+
 
 def generate_color_of_probable_shapes(found_points, probabilities):
     blue = 0.7
@@ -70,3 +75,9 @@ def generate_color_of_probable_shapes(found_points, probabilities):
     object_to_return = PointsObject()
     object_to_return.add_points(found_points, color)
     return object_to_return
+
+
+def reduce_environment_points(environment_points, d_x):
+    environment_points = np.round(environment_points / d_x) * d_x
+    return environment_points, [np.unique(environment_points[:, 0]), np.unique(environment_points[:, 1]), np.unique(
+        environment_points[:, 2])]

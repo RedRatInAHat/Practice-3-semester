@@ -1,8 +1,10 @@
 import open3d
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 
 import moving_prediction
+from moving_prediction import get_future_points
 
 
 def visualize_points(points, colors):
@@ -108,8 +110,8 @@ def get_histogram_of_probabilities(points, probabilities, step=0.1, y_start=0, y
     dict = moving_prediction.sum_dif_probabilities_of_same_points({}, points, probabilities)
     probabilities = np.fromiter(dict.values(), dtype=float)
     points = moving_prediction.tuple_to_array(np.fromiter(dict.keys(), dtype=np.dtype('float, float')))
-    x_min, x_max = np.min(points[:, 0]) - 2*step, np.max(points[:, 0]) + 2*step
-    y_min, y_max = np.min(points[:, 1]) - 2*step, np.max(points[:, 1]) + 2*step
+    x_min, x_max = np.min(points[:, 0]) - 2 * step, np.max(points[:, 0]) + 2 * step
+    y_min, y_max = np.min(points[:, 1]) - 2 * step, np.max(points[:, 1]) + 2 * step
     x = np.arange(x_min, x_max, step)
     y = np.arange(y_min, y_max, step)
     z = np.zeros((x.shape[0], y.shape[0]))
@@ -123,5 +125,24 @@ def get_histogram_of_probabilities(points, probabilities, step=0.1, y_start=0, y
     plt.show()
 
 
-if __name__ == "__main__":
-    visualize([], [])
+def show_found_functions(found_functions, t, points, tt, real_y, x_label='', y_label='', title=''):
+    trajectory = get_future_points(found_functions, tt)
+    legend = ["given points", 'ground truth']
+    plt.plot(t, points, 'o', tt, real_y, '-')
+    for func, y_ in zip(found_functions, trajectory):
+        plt.plot(tt, y_, '--')
+        legend.append(func)
+    plt.legend(legend)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.show()
+
+
+def show_points_with_obstacles(function, tt, obstacles_level):
+    trajectory = get_future_points(function, tt)
+    for i in obstacles_level:
+        plt.axhline(y=i, color='cyan', linestyle='--')
+    for func, y_ in zip(function, trajectory):
+        plt.plot(tt, y_, '--')
+    plt.show()

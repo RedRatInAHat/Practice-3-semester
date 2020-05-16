@@ -226,11 +226,11 @@ def linear_movement():
     print(time.time() - start)
 
     # show prediction results
-    moving_prediction.show_found_functions(found_functions_x, time_, center_trajectory[:, 0], ttime,
+    visualization.show_found_functions(found_functions_x, time_, center_trajectory[:, 0], ttime,
                                            real_trajectory[:, 0])
-    moving_prediction.show_found_functions(found_functions_y, time_, center_trajectory[:, 1], ttime,
+    visualization.show_found_functions(found_functions_y, time_, center_trajectory[:, 1], ttime,
                                            real_trajectory[:, 1])
-    moving_prediction.show_found_functions(found_functions_z, time_, center_trajectory[:, 2], ttime,
+    visualization.show_found_functions(found_functions_z, time_, center_trajectory[:, 2], ttime,
                                            real_trajectory[:, 2])
 
     # estimation probability of being in points in time t
@@ -473,22 +473,22 @@ def observation_momental():
     future_time = np.arange(0, round(number_of_observations * observation_step_time * 6, 3), observation_step_time)
     future_angles_gt, future_center_gt, _ = create_movement_path(falling_object, rotation_params, moving_params,
                                                                  future_time)
-    moving_prediction.show_found_functions(trajectory_functions_x, observation_moments,
+    visualization.show_found_functions(trajectory_functions_x, observation_moments,
                                            found_center_positions[:, 0], future_time, future_center_gt[:, 0], 't, s',
                                            'x, m', 'x coordinate of center')
-    moving_prediction.show_found_functions(trajectory_functions_y, observation_moments,
+    visualization.show_found_functions(trajectory_functions_y, observation_moments,
                                            found_center_positions[:, 1], future_time, future_center_gt[:, 1], 't, s',
                                            'y, m', 'y coordinate of center')
-    moving_prediction.show_found_functions(trajectory_functions_z, observation_moments,
+    visualization.show_found_functions(trajectory_functions_z, observation_moments,
                                            found_center_positions[:, 2], future_time, future_center_gt[:, 2], 't, s',
                                            'z, m', 'z coordinate of center')
-    moving_prediction.show_found_functions(angle_functions_x, observation_moments,
+    visualization.show_found_functions(angle_functions_x, observation_moments,
                                            found_rotation[:, 0], future_time, future_angles_gt[:, 0], 't, s',
                                            'angle, deg', 'x axis angle')
-    moving_prediction.show_found_functions(angle_functions_y, observation_moments,
+    visualization.show_found_functions(angle_functions_y, observation_moments,
                                            found_rotation[:, 1], future_time, future_angles_gt[:, 1], 't, s',
                                            'angle, deg', 'y axis angle')
-    moving_prediction.show_found_functions(angle_functions_z, observation_moments,
+    visualization.show_found_functions(angle_functions_z, observation_moments,
                                            found_rotation[:, 2], future_time, future_angles_gt[:, 2], 't, s',
                                            'angle, deg', 'z axis angle')
 

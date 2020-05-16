@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image, ImageOps
 import os
+from math import radians, sin
 
 
 def calculate_point_cloud(rgb, depth, cam_angle=57., near_clipping_plane=0.2, far_clipping_plane=3.5, step=1):
@@ -18,18 +19,17 @@ def calculate_point_cloud(rgb, depth, cam_angle=57., near_clipping_plane=0.2, fa
         numpy.array 1: coordinates of points
         numpy.array 2: color of points
     """
-    from math import radians
 
     depth_amplitude = far_clipping_plane - near_clipping_plane
     x_resolution, y_resolution = depth.shape[1], depth.shape[0]
-    x_half_resolution, y_half_resolution = x_resolution/2, y_resolution/2
+    x_half_resolution, y_half_resolution = x_resolution / 2, y_resolution / 2
     x_half_angle = radians(cam_angle) / 2.
     y_half_angle = radians(cam_angle) / 2. * y_resolution / x_resolution
 
     xyz = np.zeros((y_resolution, x_resolution, 3))
 
-    x_angles = (x_half_resolution - 0.5 - np.arange(x_resolution))/x_half_resolution * x_half_angle
-    y_angles = (y_half_resolution - 0.5 - np.arange(y_resolution))/y_half_resolution * y_half_angle
+    x_angles = (x_half_resolution - 0.5 - np.arange(x_resolution)) / x_half_resolution * x_half_angle
+    y_angles = (y_half_resolution - 0.5 - np.arange(y_resolution)) / y_half_resolution * y_half_angle
     xx_angles, yy_angles = np.meshgrid(x_angles, y_angles)
 
     xyz[:, :, 2] = near_clipping_plane + depth_amplitude * depth
@@ -42,6 +42,10 @@ def calculate_point_cloud(rgb, depth, cam_angle=57., near_clipping_plane=0.2, fa
     reliable_depth = np.logical_and(xyz[:, 2] > near_clipping_plane, xyz[:, 2] < far_clipping_plane)
 
     return xyz[reliable_depth], rgb[reliable_depth]
+#
+#
+# def create_3d_data_grid(xyz, d_x, observation_vector=np.asarray([0, 1, 0]), cam_angle=57.,
+#                         x_resolution, y_resolution):
 
 
 def create_dataset_from_vrep(number_of_frames, time_interval=0, resolution_x=640, resolution_y=480, path_to_images=""):
@@ -110,6 +114,7 @@ def load_image(path_to_image, name_of_image, mode="RGB"):
 
     if mode == "RGB":
         img = cv2.imread(path_to_image + "/" + name_of_image)
+        img[:, :, 0], img[:, :, 2] = np.copy(img[:, :, 2]), np.copy(img[:, :, 0])
     else:
         img = cv2.imread(path_to_image + "/" + name_of_image, 0)
 
