@@ -1,4 +1,5 @@
 import numpy as np
+import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 
 
@@ -16,14 +17,17 @@ class PointsObject:
     def __hash__(self) -> int:
         return super().__hash__()
 
-    def __init__(self):
+    def __init__(self, xyz=None, rgb=None, camera_position=None, radius_for_normals=0.2, number=None):
         self.__xyz = np.zeros([0, 3])
         self.__rgb = np.zeros([0, 3])
+        self.__normals = np.zeros([0, 3])
+        self.__active_points = np.empty([0], dtype=bool)
+        if xyz is not None:
+            self.set_points(xyz, rgb, number, camera_position, radius_for_normals)
         self.__visible = True
         self.__moving = False
-        self.__active_points = np.empty([0])
 
-    def add_points(self, xyz, rgb=None, number=None):
+    def add_points(self, xyz, rgb=None, number=None, center_of_view=None, radius=0.1):
         """Adding points to xyz and rgb
 
         If user didn't send rgb, it is made grey by default. If user doesn't point the number of active points they all
@@ -33,6 +37,8 @@ class PointsObject:
             xyz (numpy.array): an array for xyz coordinates of the object to add
             rgb (numpy.array): an array for rgb value (.0, 1.0) of the points of the object to add
             number (int): number of active points
+            center_of_view (numpy.array): point of view from camera
+            radius (float): radius of searching neighbourhood points
         """
         try:
             self.__xyz = np.append(self.__xyz, xyz, axis=0)
@@ -40,6 +46,8 @@ class PointsObject:
             if rgb is None or not rgb.shape[0] == xyz.shape[0]:
                 rgb = np.empty([xyz.shape[0], 3])
                 rgb.fill(0.5)
+
+            self.__normals = np.append(self.__normals, self.calculate_normals(center_of_view, radius), axis=0)
             self.__rgb = np.append(self.__rgb, rgb, axis=0)
 
             if number is not None and number > xyz.shape[0]:
@@ -52,7 +60,7 @@ class PointsObject:
         except ValueError as e:
             print("Error in PointObject.add_points:", e)
 
-    def set_points(self, xyz, rgb=None, number=None):
+    def set_points(self, xyz, rgb=None, number=None, center_of_view=None, radius=0.1):
         """Setting xyz and rgb points
 
         If user didn't send rgb, it is made grey by default
@@ -61,6 +69,8 @@ class PointsObject:
             xyz (numpy.array): an array for xyz coordinates of the object
             rgb (numpy.array): an array for rgb value (.0, 1.0) of the points of the object
             number (int): number of active points
+            center_of_view (numpy.array): point of view from camera
+            radius (float): radius of searching neighbourhood points
         """
         try:
             self.__xyz = xyz
@@ -68,6 +78,7 @@ class PointsObject:
                 rgb = np.empty([xyz.shape[0], 3])
                 rgb.fill(0.5)
             self.__rgb = rgb
+            self.__normals = self.calculate_normals(center_of_view, radius)
         except ValueError as e:
             print("Error in PointObject.set_points:", e)
 
@@ -75,8 +86,8 @@ class PointsObject:
 
     def get_points(self):
         """Returns coordinates and colors of active object's points"""
-        xyz = self.__xyz[self.__active_points == True]
-        rgb = self.__rgb[self.__active_points == True]
+        xyz = self.__xyz[self.__active_points]
+        rgb = self.__rgb[self.__active_points]
         return xyz, rgb
 
     @property
@@ -161,7 +172,7 @@ class PointsObject:
             false_active.fill(False)
             new_active = np.append(true_active, false_active)
             np.random.shuffle(new_active)
-        return new_active
+        return new_active.astype(bool)
 
     def clear(self):
         """Erases points"""
@@ -199,7 +210,6 @@ class PointsObject:
             path (string): path to the file. Folders have to exist
             name (string): name of the file
         """
-        import open3d as o3d
         from pathlib import Path
 
         Path(path).mkdir(parents=True, exist_ok=True)
@@ -212,14 +222,24 @@ class PointsObject:
         o3d.io.write_point_cloud(full_path, pcd)
 
     def get_normals(self):
-        import open3d as o3d
+        return self.__normals[self.__active_points]
 
-        xyz, rgb = self.get_points()
+    def calculate_normals(self, center_of_view=None, radius=0.1):
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(xyz)
-        pcd.colors = o3d.utility.Vector3dVector(rgb)
-        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-        return np.asarray(pcd.normals)
+        pcd.points = o3d.utility.Vector3dVector(self.__xyz)
+        pcd.colors = o3d.utility.Vector3dVector(self.__rgb)
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=radius, max_nn=30))
+        normals = np.asarray(pcd.normals)
+        if center_of_view is None:
+            return normals
+        else:
+            return self.get_positive_normals(normals, center_of_view)
+
+    def get_positive_normals(self, normals, center_of_view):
+        dist_pos = np.linalg.norm((self.__xyz + normals/100) - center_of_view, axis = 1)
+        dist_neg = np.linalg.norm((self.__xyz - normals/100) - center_of_view, axis = 1)
+        normals = np.where((dist_neg >= dist_pos)[:, np.newaxis], normals, -normals)
+        return normals
 
     def get_center(self):
         return np.mean(self.__xyz, axis=0)

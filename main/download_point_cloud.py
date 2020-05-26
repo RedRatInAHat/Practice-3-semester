@@ -28,8 +28,8 @@ def download_to_object(path, number_of_points=None):
     from points_object import PointsObject
 
     pcd = open3d.io.read_point_cloud(path)
-    object = PointsObject()
-    object.set_points(np.asarray(pcd.points), np.asarray(pcd.colors), number=number_of_points)
+    object = PointsObject(np.asarray(pcd.points), np.asarray(pcd.colors),
+                          camera_position=np.asarray([0, 0, 0]), number=number_of_points)
     return object
 
 

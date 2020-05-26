@@ -4,6 +4,7 @@ import time
 import sys
 
 from points_object import PointsObject
+from moving_prediction import MovementFunctions
 import image_processing
 import visualization
 import download_point_cloud
@@ -12,6 +13,19 @@ import moving_prediction
 import open3d_icp
 import data_generation
 import probablistic_interaction
+
+
+def check_data_generation():
+    data_generation.save_images_from_VREP()
+    depth_im = image_processing.load_image("3d_map/", "room_depth0.png", "depth")
+    rgb_im = image_processing.load_image("3d_map/", "room_rgb0.png")
+
+    xyz, rgb = image_processing.calculate_point_cloud(rgb_im / 255, depth_im / 255)
+
+    temp = PointsObject()
+    temp.add_points(xyz, rgb)
+    temp.save_all_points("3d_map/", "room")
+    visualization.visualize([temp])
 
 
 def check_RANSAC():
@@ -155,7 +169,7 @@ def check_physical_objects_interaction_at_moment():
     observation_moments = np.arange(0, round(number_of_observations * observation_step_time, 3), observation_step_time)
     future_time = np.arange(0, round(number_of_observations * observation_step_time * 6, 3), observation_step_time)
     # prediciton parameters
-    time_of_probability = 2.
+    time_of_probability = 1.8
     d_x = 0.2
     d_angle = 1
     threshold_p = 0.5
@@ -244,7 +258,7 @@ def check_physical_objects_interaction_to_moment():
     observation_moments = np.arange(0, round(number_of_observations * observation_step_time, 3), observation_step_time)
     future_time = np.arange(0, round(number_of_observations * observation_step_time * 6, 3), observation_step_time)
     # prediciton parameters
-    time_of_probability = 2.
+    time_of_probability = 1.
     d_x = 0.1
     d_angle = 1
     threshold_p = 0.5
@@ -259,7 +273,10 @@ def check_physical_objects_interaction_to_moment():
     prediction_points = falling_object.get_points()[0]
     falling_object.shift([0.3, 0.6, 2.2])
 
-    shapes += [falling_object]
+    environment_xyz, environment_normals, unique_environment_xyz = data_generation.reduce_environment_points(
+        stable_object_points,
+        stable_object.get_normals(),
+        d_x)
 
     # generate observation data
     rotation_angles_gt, center_position_gt, moving_objects = data_generation.create_movement_path(falling_object,
@@ -270,50 +287,169 @@ def check_physical_objects_interaction_to_moment():
     # for i, m in enumerate(moving_objects):
     #     found_shapes = shape_recognition.RANSAC(m.get_points()[0], m.get_normals(), number_of_points_threshold=200)
     #     moving_objects[i].set_points(found_shapes[-1])
-    shapes += moving_objects
 
     found_rotation, found_center_positions = moving_prediction.find_observations(moving_objects,
                                                                                  falling_object.get_center())
 
     # find functions for xyz trajectory
-    center_functions = []
-    angles_functions = []
+    center_functions, angles_functions = moving_prediction.find_center_and_rotation_functions(
+        observation_moments,
+        found_center_positions,
+        found_rotation)
+
+    center_f = [MovementFunctions(center_functions[0], number_of_observations - 1),
+                MovementFunctions(center_functions[1], number_of_observations - 1),
+                MovementFunctions(center_functions[2], number_of_observations - 1)]
+    angles_f = [MovementFunctions(angles_functions[0], number_of_observations - 1),
+                MovementFunctions(angles_functions[1], number_of_observations - 1),
+                MovementFunctions(angles_functions[2], number_of_observations - 1)]
+
+    # find min/max angles
+    min_max_angles = np.zeros((3, 2))
+    min_max_center = np.zeros((3, 2))
     for i in range(3):
-        center_functions.append(moving_prediction.find_functions(observation_moments, found_center_positions[:, i]))
-        angles_functions.append(moving_prediction.find_functions(observation_moments, found_rotation[:, i]))
+        min_max_every_gaussian = moving_prediction.find_min_max_of_function(angles_f[i], time_of_probability)
+        min_max_angles[i] = np.min(min_max_every_gaussian[0]), np.max(min_max_every_gaussian[1])
+        min_max_every_gaussian = moving_prediction.find_min_max_of_function(center_f[i], time_of_probability)
+        min_max_center[i] = np.min(min_max_every_gaussian[0]), np.max(min_max_every_gaussian[1])
 
-    future_angles_gt, future_center_gt, _ = data_generation.create_movement_path(falling_object, rotation_params,
-                                                                                 moving_params, future_time)
+    # find min/max deviation from center
+    min_max_deviation = moving_prediction.find_min_max_deviation(min_max_angles, prediction_points, d_angle)
 
-    environment_xyz, unique_environment_xyz = data_generation.reduce_environment_points(stable_object_points, d_x)
+    # find parallelepiped of potential position of object
+    potential_interaction_field = np.round((min_max_center + min_max_deviation) / d_x) * d_x
 
+    # find environment points in potential parallelepiped
+    potential_environment_idx = moving_prediction.get_points_in_area(environment_xyz, potential_interaction_field)
+
+    if np.sum(potential_environment_idx) == 0:
+        print("all clear")
+        return
+
+    p_e_points = environment_xyz[potential_environment_idx]
+
+    start = time.time()
+    area = [[np.min(p_e_points[:, 0]), np.max(p_e_points[:, 0])],
+            [np.min(p_e_points[:, 1]), np.max(p_e_points[:, 1])],
+            [np.min(p_e_points[:, 2]), np.max(p_e_points[:, 2])]]
+    interactive_points, interactive_probability = moving_prediction.probable_points_in_area(center_f, angles_f,
+                                                                                            prediction_points, area,
+                                                                                            time_of_probability, d_x,
+                                                                                            d_angle, threshold_p)
+    print(time.time() - start)
+
+    start = time.time()
+    env_idx, points_idx = moving_prediction.find_matches_in_two_arrays(np.around(p_e_points, 1),
+                                                                       np.around(interactive_points, 1))
+    p_e_points = p_e_points[env_idx]
+    print(time.time() - start)
+
+    for c in center_f:
+        c.get_velocity(observation_moment)
+
+    # visualization
+
+    # potential trajectories of object
+    # angles.append(
+    #     moving_prediction.probability_of_being_in_point(angles_functions[i], time_of_probability, d_angle, True))
+
+    # ground truth generation
+    # future_angles_gt, future_center_gt, _ = data_generation.create_movement_path(falling_object, rotation_params,
+    #                                                                              moving_params, future_time)
     # for i in range(3):
     #     visualization.show_found_functions(center_functions[i], observation_moments,
     #                                    found_center_positions[:, i], future_time, future_center_gt[:, i], 't, s',
     #                                    'x, m', str(i) + ' coordinate of center')
     #     visualization.show_points_with_obstacles(center_functions[i], future_time, unique_environment_xyz[i])
+    #
 
-    unique_stable = PointsObject()
-    unique_stable.add_points(environment_xyz)
-    shapes += [unique_stable]
+    # moving object "path"
+    # shapes += moving_objects
+
+    # first observation
+    # shapes += [falling_object]
+
+    # real position of falling object
+    # _, _, moving_objects = data_generation.create_movement_path(falling_object, rotation_params, moving_params,
+    #                                                             observation_moment)
+    # points = moving_objects[0].get_points()[0]
+    # gt_object = PointsObject()
+    # gt_object.add_points(points, falling_object.get_points()[1])
+    # shapes += [gt_object]
+
+    # environment
+    # shapes += [stable_object]
+
+    # environment in 3d grid
+    # unique_stable = PointsObject()
+    # unique_stable.add_points(environment_xyz[np.invert(potential_environment_idx)])
+    # shapes += [unique_stable]
+
+    # probable parallelepiped of object position
+    # pot_x = np.arange(potential_interaction_field[0, 0], potential_interaction_field[0, 1] + d_x, d_x)
+    # pot_y = np.arange(potential_interaction_field[1, 0], potential_interaction_field[1, 1] + d_x, d_x)
+    # pot_z = np.arange(potential_interaction_field[2, 0], potential_interaction_field[2, 1] + d_x, d_x)
+    # points = np.array(np.meshgrid(pot_x, pot_y, pot_z)).T.reshape(-1, 3)
+    # potential_interaction_field_points = PointsObject()
+    # potential_interaction_field_points.add_points(points, np.asarray([[1, 1, 0]] * points.shape[0]))
+    # shapes += [potential_interaction_field_points]
+
+    # potentially interacting environment points
+    # p_t = PointsObject()
+    # p_t.add_points(p_e_points, np.asarray([[0.3, 1, 0.5]] * p_e_points.shape[0]))
+    # shapes += [p_t]
+
+    # probable points
+    # shapes.append(data_generation.generate_color_of_probable_shapes(interactive_points, interactive_probability))
 
     # visualization.visualize(shapes)
 
 
+def check_normals_estimation():
+    stable_object = download_point_cloud.download_to_object("3d_map/room.pcd")
+    points = stable_object.get_points()[0]
+    normals = stable_object.get_normals() / 100
+    normals_object = PointsObject(points + normals)
+    visualization.visualize([stable_object, normals_object])
 
-def check_3d_occupancy_grid():
-    data_generation.save_images_from_VREP()
-    depth_im = image_processing.load_image("3d_map/", "room_depth0.png", "depth")
-    rgb_im = image_processing.load_image("3d_map/", "room_rgb0.png")
+    d_x = 0.1
 
-    xyz, rgb = image_processing.calculate_point_cloud(rgb_im / 255, depth_im / 255)
+    new_points, new_normals, _ = data_generation.reduce_environment_points(stable_object.get_points()[0],
+                                                                           stable_object.get_normals(), d_x)
+    new_points_object = PointsObject(new_points, np.full(new_points.shape, 0.3))
+    new_normals_object = PointsObject(new_points + new_normals/100)
+    visualization.visualize([new_points_object, new_normals_object])
 
-    temp = PointsObject()
-    temp.add_points(xyz, rgb)
-    temp.save_all_points("3d_map/", "room")
-    visualization.visualize([temp])
 
-    # xyz = image_processing.create_3d_data_grid(depth_im/255, rgb_im/255, 0.1)
+def check_function_calculation():
+    # parameters
+    shapes = []
+    # data generation parameters
+    rotation_params = np.asarray([[0, 0], [0, 0], [0, 50]])
+    moving_params = np.asarray([[0, 0.1, -0.03], [0, -0.5, -0.1], [0, 0.1, 0]])
+    observation_step_time = 0.2
+    number_of_observations = 5
+    observation_moments = np.arange(0, round(number_of_observations * observation_step_time, 3), observation_step_time)
+    future_time = np.arange(0, round(number_of_observations * observation_step_time * 6, 3), observation_step_time)
+
+    # load the models
+    stable_object = download_point_cloud.download_to_object("3d_map/room.pcd")
+    stable_object_points = stable_object.get_points()[0]
+
+    falling_object = download_point_cloud.download_to_object("models/red cube.ply", 500)
+    falling_object.scale(0.1)
+    prediction_points = falling_object.get_points()[0]
+    falling_object.shift([0.3, 0.6, 2.2])
+
+    # generate observation data
+    rotation_angles_gt, center_position_gt, moving_objects = data_generation.create_movement_path(falling_object,
+                                                                                                  rotation_params,
+                                                                                                  moving_params,
+                                                                                                  observation_moments)
+
+    # for i, m in enumerate(moving_objects):
+    #     found_shapes = shape_recognition.RANSAC(m.get_points()[0], m.get_normals(), number_of_points_threshold=200)
+    #     moving_objects[i].set_points(found_shapes[-1])
 
 
 if __name__ == "__main__":
@@ -321,6 +457,7 @@ if __name__ == "__main__":
     # check_RANSAC()
     # check_probabilistic_prediction()
     # check_physical_objects_interaction_at_moment()
+    # check_normals_estimation()
     check_physical_objects_interaction_to_moment()
-    # check_3d_occupancy_grid()
+    # check_data_generation()
     print(time.time() - start)

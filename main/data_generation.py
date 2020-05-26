@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.colors
 
 from points_object import PointsObject
@@ -77,7 +78,9 @@ def generate_color_of_probable_shapes(found_points, probabilities):
     return object_to_return
 
 
-def reduce_environment_points(environment_points, d_x):
+def reduce_environment_points(environment_points, environment_normals, d_x):
     environment_points = np.round(environment_points / d_x) * d_x
-    return environment_points, [np.unique(environment_points[:, 0]), np.unique(environment_points[:, 1]), np.unique(
-        environment_points[:, 2])]
+    df = pd.DataFrame(np.c_[environment_points, environment_normals], columns=['x', 'y', 'z', 'nx', 'ny', 'nz'])
+    xyzn = df.round(2).groupby(['x', 'y', 'z']).mean().reset_index().to_numpy()
+    return xyzn[:, :3], xyzn[:, 3:], [np.unique(environment_points[:, 0]), np.unique(environment_points[:, 1]),
+                                      np.unique(environment_points[:, 2])]
