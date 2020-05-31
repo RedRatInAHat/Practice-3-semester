@@ -48,6 +48,50 @@ class MovementFunctions:
         return means, standard_deviations
 
 
+class PointsVelocities():
+
+    def __init__(self):
+        self.points_idx = np.empty(0)
+        self.points_linear_velocity = np.empty((0, 3))
+        self.points_linear_sd = np.empty((0, 3))
+        self.points_linear_weight = np.empty(0)
+        self.points_linear_angular_velocity = np.empty((0, 3))
+        self.points_linear_angular_sd = np.empty((0, 3))
+        self.points_linear_angular_weight = np.empty(0)
+        self.radii = np.empty((0, 3))
+        self.radii_length = np.empty(0)
+
+    def add_points(self, center, linear_velocity, points_idx, radii, angular_velocities, linear_weight, angular_weight,
+                   linear_sd, angular_sd):
+        all_points_idx = np.repeat(points_idx, angular_velocities.shape[0], axis=0)
+        self.points_idx = np.append(self.points_idx, all_points_idx).astype(int)
+        self.radii = np.append(self.radii, np.repeat(radii, angular_velocities.shape[0], axis=0), axis=0)
+        self.radii_length = np.append(self.radii_length, np.linalg.norm(radii, axis=1))
+
+        self.points_linear_velocity = np.append(self.points_linear_velocity,
+                                                np.tile([linear_velocity], (all_points_idx.shape[0], 1)), axis=0)
+        self.points_linear_sd = np.append(self.points_linear_sd, np.tile([linear_sd], (all_points_idx.shape[0], 1)),
+                                          axis=0)
+        self.points_linear_weight = np.append(self.points_linear_weight,
+                                              np.tile([linear_weight], all_points_idx.shape[0]))
+
+        w_l_v, w_l_s = self.calculate_angular_to_linear_velocity(np.tile(angular_velocities, (points_idx.shape[0], 1)),
+                                                                 np.tile(angular_sd, (points_idx.shape[0], 1)),
+                                                                 np.repeat(radii, angular_velocities.shape[0], axis=0))
+        self.points_linear_angular_velocity = np.append(self.points_linear_angular_velocity, w_l_v, axis=0)
+        self.points_linear_angular_sd = np.append(self.points_linear_angular_sd, w_l_s, axis=0)
+        self.points_linear_angular_weight = np.append(self.points_linear_angular_weight,
+                                                      np.tile(angular_weight, (all_points_idx.shape[0], 1)))
+
+    def calculate_angular_to_linear_velocity(self, angular_velocity, angular_velocity_sd, radii):
+        linear_velocity = np.cross(angular_velocity, radii)
+        linear_velocity_min = np.cross(angular_velocity - angular_velocity_sd, radii)
+        linear_velocity_max = np.cross(angular_velocity + angular_velocity_sd, radii)
+
+        return linear_velocity, np.maximum(np.abs(linear_velocity - linear_velocity_min),
+                                           np.abs(linear_velocity - linear_velocity_max))
+
+
 def generate_poly_trajectory(x=None, trajectory_param=None, number_of_steps=10, step=0.01, return_x=False):
     if x is None:
         x = np.arange(0, number_of_steps * step, step)
@@ -258,9 +302,6 @@ def probable_points_in_area(center_funcs, angles_funcs, points, area, moment, d_
     points, probability = get_points_position(center_positions, center_probabilities, deviations,
                                               deviations_probability, d_x)
     return points, probability
-
-    points_idx = get_points_in_area(points, area)
-    return points[points_idx], probability[points_idx]
 
 
 def view1D(a, b):  # a, b are arrays
@@ -572,6 +613,87 @@ def find_observations(objects, initial_center):
     return found_rotations, found_center_shifts + initial_center
 
 
+def combine_results(m, sd, w, threshold_w=1e-4):
+    means = np.array(np.meshgrid(m[0], m[1], m[2])).T.reshape(-1, 3)
+    standard_deviations = np.array(np.meshgrid(sd[0], sd[1], sd[2])).T.reshape(-1, 3)
+    weights = np.prod(np.array(np.meshgrid(w[0], w[1], w[2])).T.reshape(-1, 3), axis=1)
+
+    threshold_weights = weights > threshold_w
+
+    return means[threshold_weights], standard_deviations[threshold_weights], weights[threshold_weights]
+
+
+def get_velocities(functions, moment):
+    m_x, sd_x, w_x = functions[0].get_velocity(moment)
+    m_y, sd_y, w_y = functions[1].get_velocity(moment)
+    m_z, sd_z, w_z = functions[2].get_velocity(moment)
+
+    return combine_results([m_x, m_y, m_z], [sd_x, sd_y, sd_z], [w_x, w_y, w_z])
+
+
+def get_centers(functions, moment):
+    m_x, sd_x, w_x = functions[0].get_gaussians_parameters_at_time(moment)
+    m_y, sd_y, w_y = functions[1].get_gaussians_parameters_at_time(moment)
+    m_z, sd_z, w_z = functions[2].get_gaussians_parameters_at_time(moment)
+
+    return combine_results([m_x, m_y, m_z], [sd_x, sd_y, sd_z], [w_x, w_y, w_z])
+
+
+def get_unique_values_3(m, sd, w):
+    df = pd.DataFrame(np.c_[m, sd, w], columns=['vx', 'vy', 'vz', 'sdx', 'sdy', 'sdz', 'w'])
+    mss = df.round(3).groupby(['vx', 'vy', 'vz']).max().reset_index().to_numpy()
+    msw = df.round(3).groupby(['vx', 'vy', 'vz']).sum().reset_index().to_numpy()
+    return msw[:, :3], mss[:, 3:6], msw[:, -1]
+
+
+def get_unique_values_6(m_p, m_v, sd_p, sd_v, w):
+    df = pd.DataFrame(np.c_[m_p, m_v, sd_p, sd_v, w],
+                      columns=['x', 'y', 'z', 'vx', 'vy', 'vz', 'sdx', 'sdy', 'sdz', 'sdvx', 'sdvy', 'sdvz', 'w'])
+    mss = df.groupby(['x', 'y', 'z', 'vx', 'vy', 'vz']).max().reset_index().to_numpy()
+    msw = df.groupby(['x', 'y', 'z', 'vx', 'vy', 'vz']).sum().reset_index().to_numpy()
+    return msw[:, :3], msw[:, 3:6], mss[:, 6:9], mss[:, 9:12], msw[:, -1]
+
+
+def find_points_in_radius(points, center, radius):
+    radii = np.abs(points - center)
+    distances = np.linalg.norm(radii, axis=1)
+    return np.asarray(np.where(distances < radius))[0], radii[distances < radius]
+
+
+def get_particles_velocities(points, linear_velocities_functions, angular_velocities_functions, moment, max_radius):
+    c_means, c_standard_deviations, c_weights = get_centers(linear_velocities_functions, moment)
+    l_means, l_standard_deviations, l_weights = get_velocities(linear_velocities_functions, moment)
+    a_means, a_standard_deviations, a_weights = get_velocities(angular_velocities_functions, moment)
+
+    # import time
+    # start = time.time()
+    # a_means, a_standard_deviations, a_weights = get_unique_values_3(np.around(a_means), a_standard_deviations,
+    #                                                                 a_weights)
+    # c_means, l_means, c_standard_deviations, l_standard_deviations, c_weights = get_unique_values_6(
+    #     np.around(c_means, 3), np.round(l_means, 3), c_standard_deviations, l_standard_deviations, c_weights)
+    # print(time.time() - start)
+    # potentially may reduce calculations, but for ~30 points it's too long
+
+    pv = PointsVelocities()
+
+    for c, center in enumerate(c_means):
+        points_idx, radii = find_points_in_radius(points, center, max_radius + np.sum(c_standard_deviations[c] ** 2))
+        pv.add_points(center, l_means[c], points_idx, radii, a_means, l_weights[c], a_weights, l_standard_deviations[c],
+                      a_standard_deviations)
+    return pv
+
+
+def find_angular_to_linear_velocity(angular_velocity, radii, linear_velocity):
+    velocity_radii = np.zeros([radii.shape[0], angular_velocity.shape[0], 3])
+    if angular_velocity.shape <= radii.shape:
+        for a, a_vel in enumerate(angular_velocity):
+            velocity_radii[:, a] = np.cross(a_vel, radii) + linear_velocity
+    else:
+        for r, radius in enumerate(radii):
+            velocity_radii[r] = np.cross(angular_velocity, radius) + linear_velocity
+    return velocity_radii.flatten().reshape((-1, 3))
+
+
 def temp():
     def generate_array(dev, cent):
         array_to_return = np.zeros((cent.shape[0], dev.shape[0]))
@@ -617,3 +739,137 @@ def temp():
 
 def around_to_step(array, dx):
     return np.round(array / dx) * dx
+
+
+def i_have_a_theory():
+    import math
+    vx = 2.
+    vy = 1.
+    xy_p = np.asarray([0., 0., 0])
+    xy_c = np.asarray([-1., 1., 0])
+    w = -1.
+    phi = math.radians(45.)
+    r = np.linalg.norm(xy_c - xy_p)
+    alpha = 1.
+    gamma = 0.5
+    mu = 0
+    q = np.asarray([vx, vy, w])
+
+    print("theory from here")
+
+    print("v: ", vx, " ", vy, " ", 0)
+
+    # variant 1
+    T_inv = np.asarray([[math.cos(phi), math.sin(phi), 0],
+                        [-math.sin(phi), math.cos(phi), 0],
+                        [0, 0, 1]])
+
+    T = np.linalg.inv(T_inv)
+
+    if vx > w * r:
+        mu = - alpha * (vx - w * r) / (vy * (1 + gamma) * (1 + alpha))
+    else:
+        mu = - alpha * (w * r - vx) / (vy * (1 + gamma) * (1 + alpha))
+
+    mu_e = - alpha * math.fabs(vx - w * r) / (vy * (1 + gamma) * (1 + alpha))
+
+    xi = 1 if vx > w * r else -1
+
+    if mu <= mu_e:
+        P = np.asarray([[1, xi * mu * (1 + gamma), 0],
+                        [0, -gamma, 0],
+                        [0, -xi * mu * (1 + gamma) / (r * alpha), 1]])
+    else:
+        P = np.asarray([[1 / (1 + alpha), 0, alpha * r / (1 + alpha)],
+                        [0, -gamma, 0],
+                        [1 / (r * (1 + alpha)), 0, alpha / (1 + alpha)]])
+
+    q = np.dot(np.dot(np.dot(T, P), T_inv), q)
+
+    print("version 0: ", q)
+
+    # version 2
+    v = np.asarray([vx, vy, 0])
+    w = np.asarray([0, 0, w])
+    distances = xy_p - xy_c
+    n = np.dot(np.asarray([0, 1, 0]), T_inv)
+
+    v_projection = v - (np.dot(v, n) / (np.sqrt(sum(n ** 2))) ** 2) * n
+    v_projection /= np.linalg.norm(v_projection)
+
+    v_w = np.cross(w, distances)
+    q = np.asarray([v, v_w]).flatten()
+
+    T_inv = np.asarray([[v_projection[0], v_projection[1], v_projection[2], 0, 0, 0],
+                        [n[0], n[1], n[2], 0, 0, 0],
+                        [0, 0, 0, v_projection[0], v_projection[1], v_projection[2]]])
+    new_q = np.dot(T_inv, q)
+
+    if new_q[0] > new_q[2]:
+        mu = - alpha * (new_q[0] - new_q[2]) / (new_q[1] * (1 + gamma) * (1 + alpha))
+        xi = 1
+    else:
+        mu = alpha * (new_q[0] - new_q[2]) / (new_q[1] * (1 + gamma) * (1 + alpha))
+        xi = -1
+
+    mu_e = - alpha * math.fabs(new_q[0] + new_q[2]) / (new_q[1] * (1 + gamma) * (1 + alpha))
+
+    if mu <= mu_e:
+        P = np.asarray([[1, xi * mu * (1 + gamma), 0],
+                        [0, -gamma, 0],
+                        [0, -xi * mu * (1 + gamma) / (r * alpha), 1 / r]])
+    else:
+        P = np.asarray([[1 / (1 + alpha), 0, alpha / (1 + alpha)],
+                        [0, -gamma, 0],
+                        [1 / (r * (1 + alpha)), 0, alpha / r * (1 + alpha)]])
+
+    q_ref = np.dot(P, new_q)
+
+    T = np.asarray([[v_projection[0], n[0], 0],
+                    [v_projection[1], n[1], 0],
+                    [v_projection[2], n[2], 0],
+                    [0, 0, v_projection[0]],
+                    [0, 0, v_projection[1]],
+                    [0, 0, v_projection[2]]])
+
+    print("version 1: ", np.dot(T, q_ref))
+    print("version 2: ", np.dot(np.dot(np.dot(T, P), T_inv), q))
+    q_now = np.dot(T, q_ref)
+    xyz = q_now[:3]
+    w = np.cross(distances, q_now[-3:]) / np.linalg.norm(distances)
+    print(distances, q_now[-3:], np.linalg.norm(distances))
+    print(xyz, w)
+
+
+def find_max_radius(points):
+    center = np.mean(points, axis=0)
+    distances = points - center
+    return np.max(np.sqrt(np.sum(distances ** 2, axis=1)))
+
+
+def find_new_velocities(points_velocities, normals, point_probabilities, gamma=0.5, gamma_sd=0.5):
+    plane_y = normals[points_velocities.points_idx]
+
+    plane_x = points_velocities.points_linear_velocity - plane_y * \
+              (np.einsum('ij,ij->i', points_velocities.points_linear_velocity, plane_y) / (
+                      np.linalg.norm(plane_y, axis=1) ** 2))[:, np.newaxis]
+
+    plane_x /= np.linalg.norm(plane_x, axis=1)[:, np.newaxis]
+
+    T_inv = np.zeros((plane_x.shape[0], 3, 6))
+    T_inv[:, 0, :3] = np.copy(plane_x)
+    T_inv[:, 1, :3] = np.copy(plane_y)
+    T_inv[:, 2, -3:] = np.copy(plane_x)
+
+    q = np.zeros((plane_x.shape[0], 6))
+    q[:, :3] = points_velocities.points_linear_velocity
+    q[:, -3:] = points_velocities.points_linear_angular_velocity
+
+    q_new = np.einsum('ij,ij->i', T_inv, q)
+
+    # T_inv = np.asarray([[v_projection[0], v_projection[1], v_projection[2], 0, 0, 0],
+    #                     [n[0], n[1], n[2], 0, 0, 0],
+    #                     [0, 0, 0, v_projection[0], v_projection[1], v_projection[2]]])
+    # new_q = np.dot(T_inv, q)
+
+

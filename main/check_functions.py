@@ -287,6 +287,7 @@ def check_physical_objects_interaction_to_moment():
     # for i, m in enumerate(moving_objects):
     #     found_shapes = shape_recognition.RANSAC(m.get_points()[0], m.get_normals(), number_of_points_threshold=200)
     #     moving_objects[i].set_points(found_shapes[-1])
+    max_radius = moving_prediction.find_max_radius(prediction_points)
 
     found_rotation, found_center_positions = moving_prediction.find_observations(moving_objects,
                                                                                  falling_object.get_center())
@@ -336,16 +337,17 @@ def check_physical_objects_interaction_to_moment():
                                                                                             prediction_points, area,
                                                                                             time_of_probability, d_x,
                                                                                             d_angle, threshold_p)
-    print(time.time() - start)
 
-    start = time.time()
     env_idx, points_idx = moving_prediction.find_matches_in_two_arrays(np.around(p_e_points, 1),
                                                                        np.around(interactive_points, 1))
     p_e_points = p_e_points[env_idx]
-    print(time.time() - start)
+    start = time.time()
+    points_velocities = moving_prediction.get_particles_velocities(interactive_points[points_idx], center_f, angles_f,
+                                                                   observation_moment, max_radius + d_x / 2)
 
-    for c in center_f:
-        c.get_velocity(observation_moment)
+    moving_prediction.find_new_velocities(points_velocities, environment_normals[env_idx],
+                                          interactive_probability[points_idx])
+    print(time.time() - start)
 
     # visualization
 
@@ -417,7 +419,7 @@ def check_normals_estimation():
     new_points, new_normals, _ = data_generation.reduce_environment_points(stable_object.get_points()[0],
                                                                            stable_object.get_normals(), d_x)
     new_points_object = PointsObject(new_points, np.full(new_points.shape, 0.3))
-    new_normals_object = PointsObject(new_points + new_normals/100)
+    new_normals_object = PointsObject(new_points + new_normals / 100)
     visualization.visualize([new_points_object, new_normals_object])
 
 
@@ -459,5 +461,6 @@ if __name__ == "__main__":
     # check_physical_objects_interaction_at_moment()
     # check_normals_estimation()
     check_physical_objects_interaction_to_moment()
+    # moving_prediction.i_have_a_theory()
     # check_data_generation()
     print(time.time() - start)
