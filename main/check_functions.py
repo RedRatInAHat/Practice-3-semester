@@ -28,6 +28,23 @@ def check_data_generation():
     visualization.visualize([temp])
 
 
+def check_moving_detection():
+    import moving_detection
+
+    rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(0) + ".png")
+    depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(0) + ".png", "depth")
+    start = time.time()
+    mog = moving_detection.Fast_RGBD_MoG(rgb_im, depth_im, number_of_gaussians=5)
+    print("initialization: ", time.time() - start)
+    for i in range(1):
+        rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i+1) + ".png")
+        depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i+1) + ".png", "depth")
+        start = time.time()
+        mog.set_mask(rgb_im, depth_im)
+        print("frame updating: ", time.time() - start)
+    #     show_image(mask/255)
+
+
 def check_RANSAC():
     ball = download_point_cloud.download_to_object("preDiploma_PC/box.pcd")
     full_model = ball
@@ -258,7 +275,7 @@ def check_physical_objects_interaction_to_moment():
     observation_moments = np.arange(0, round(number_of_observations * observation_step_time, 3), observation_step_time)
     future_time = np.arange(0, round(number_of_observations * observation_step_time * 6, 3), observation_step_time)
     # prediciton parameters
-    time_of_probability = 1.
+    time_of_probability = 1.3
     d_x = 0.1
     d_angle = 1
     threshold_p = 0.5
@@ -329,7 +346,6 @@ def check_physical_objects_interaction_to_moment():
 
     p_e_points = environment_xyz[potential_environment_idx]
 
-    start = time.time()
     area = [[np.min(p_e_points[:, 0]), np.max(p_e_points[:, 0])],
             [np.min(p_e_points[:, 1]), np.max(p_e_points[:, 1])],
             [np.min(p_e_points[:, 2]), np.max(p_e_points[:, 2])]]
@@ -341,12 +357,17 @@ def check_physical_objects_interaction_to_moment():
     env_idx, points_idx = moving_prediction.find_matches_in_two_arrays(np.around(p_e_points, 1),
                                                                        np.around(interactive_points, 1))
     p_e_points = p_e_points[env_idx]
+
     start = time.time()
     points_velocities = moving_prediction.get_particles_velocities(interactive_points[points_idx], center_f, angles_f,
                                                                    observation_moment, max_radius + d_x / 2)
 
-    moving_prediction.find_new_velocities(points_velocities, environment_normals[env_idx],
-                                          interactive_probability[points_idx])
+    new_v, new_w, new_v_sd, new_w_sd, new_weight, points_velocities = \
+        moving_prediction.find_new_velocities(points_velocities, environment_normals[env_idx],
+                                              interactive_probability[points_idx])
+
+    moving_prediction.update_gaussians(new_v, new_w, new_v_sd, new_w_sd, new_weight, points_velocities, center_f,
+                                       angles_f, observation_moment)
     print(time.time() - start)
 
     # visualization
@@ -456,11 +477,12 @@ def check_function_calculation():
 
 if __name__ == "__main__":
     start = time.time()
+    check_moving_detection()
     # check_RANSAC()
     # check_probabilistic_prediction()
     # check_physical_objects_interaction_at_moment()
     # check_normals_estimation()
-    check_physical_objects_interaction_to_moment()
+    # check_physical_objects_interaction_to_moment()
     # moving_prediction.i_have_a_theory()
     # check_data_generation()
     print(time.time() - start)

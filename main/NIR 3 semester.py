@@ -159,5 +159,5 @@ if __name__ == "__main__":
     # try_ViBE()
     # try_DEVB()
     # try_RGB_MoG()
-    # try_RGBD_MoG()
-    try_fast_RGBD_MoG()
+    try_RGBD_MoG()
+    # try_fast_RGBD_MoG()

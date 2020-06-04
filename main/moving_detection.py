@@ -569,6 +569,8 @@ class RGBD_MoG:
         depth_pixel = self.__current_depth[gauss.index[0], gauss.index[1]]
         beta = self.__matching_rate_beta ** 2
 
+        print(depth_pixel, gauss.depth_mean, gauss.depth_variance)
+
         depth_matching = np.bitwise_or((depth_pixel - gauss.depth_mean) ** 2 < beta * gauss.depth_variance,
                                        np.bitwise_or(depth_pixel == 255,
                                                      gauss.depth_observations[:, 0] / gauss.depth_observations[:,
@@ -689,7 +691,6 @@ class Fast_RGBD_MoG:
 
     def __init__(self, rgb_im, depth_im, number_of_gaussians=3, learning_rate_alfa=.025, depth_reliability_ro=0.2,
                  matching_rate_beta=2.5, luminance_min=16, depth_threshold=0.01, reliability_threshold=.4):
-
         self.__number_of_gaussians = number_of_gaussians
         self.__learning_rate_alfa = learning_rate_alfa
         self.__depth_reliability_ro = depth_reliability_ro
@@ -700,56 +701,55 @@ class Fast_RGBD_MoG:
 
         self.__height = rgb_im.shape[0]
         self.__width = rgb_im.shape[1]
-        try:
-            self.__number_of_channels = rgb_im.shape[2] + 1
-        except:
-            print("There must be RGB image, not GreyScale")
+        self.__number_of_channels = 4
 
         self.__current_yuv = RGB_to_YUV(rgb_im)
         self.__current_depth = depth_im
-        self.__gaussians = []
         self.__mask = np.zeros_like(depth_im)
 
-        self.__mean = np.zeros([self.__height, self.__width, 4, number_of_gaussians])
-        self.__variance = np.ones([self.__height, self.__width, 4, number_of_gaussians])
+        self.__mean = np.zeros([self.__height * self.__width, 4, number_of_gaussians])
+        self.__variance = np.ones([self.__height * self.__width, 4, number_of_gaussians])
         self.__weight = np.ones_like(self.__mean) / number_of_gaussians
-        self.__depth_observations = np.ones([self.__height, self.__width, 2, number_of_gaussians])
-
+        self.__depth_observations = np.ones([self.__height * self.__width, 2, number_of_gaussians])
         self.initialization()
 
     def initialization(self):
-        for i in range(self.__number_of_gaussians):
-            self.__mean[:, :, :3, i] = self.__current_yuv[:, :]
-            self.__mean[:, :, 3, i] = self.__current_depth[:, :]
-            self.__depth_observations[:, :, 0, i] = np.where(self.__current_depth == 255, 0, 1)
+        self.__mean[:, :3, :] = self.__current_yuv.reshape(-1, 3)[:, :, np.newaxis]
+        self.__mean[:, 3, :] = self.__current_depth.flatten()[:, np.newaxis]
+        self.__depth_observations[:, 0, :] = np.where(self.__current_depth == 255, 0, 1).flatten()[:, np.newaxis]
 
     def sort(self):
-        ranking = np.argsort(self.__weight[:, :, :] / self.__variance[:, :, :])
-        self.__mean = np.take(self.__mean, ranking.astype(int))
-        self.__variance = np.take(self.__variance, ranking.astype(int))
-        self.__weight = np.take(self.__weight, ranking.astype(int))
+        ranking = np.argmin(self.__weight / self.__variance, axis=2)
+        rank = np.c_[np.repeat(np.arange(self.__height * self.__width), 4),
+                     np.tile(np.arange(4), self.__height * self.__width),
+                     np.argmin(self.__weight / self.__variance, axis=2).flatten()]
+        # print(rank)
+        # self.__mean[rank[:, 0], rank[:, 1], rank[:, 2]] = 1.
+        return rank
 
     def set_mask(self, rgb_im, depth_im):
-        self.__current_yuv = RGB_to_YUV(rgb_im)
-        self.__current_depth = depth_im
+        self.__current_yuv = RGB_to_YUV(rgb_im).reshape(-1, 3)
+        self.__current_depth = depth_im.flatten()
 
         # set ranking
-        self.sort()
+        ranking = self.sort()
 
         # matching criterion
         matching_criterion = self.get_matching_criterion()
 
-        # update
-        self.__mean = np.where(
-            np.repeat(np.repeat(np.any(matching_criterion, axis=2)[:, :, np.newaxis], 4, axis=2)[:, :, :, np.newaxis],
-                      self.__number_of_gaussians, axis=3), self.update_mean(matching_criterion), self.new_mean())
+        # # update
+        # self.__mean = np.where(
+        #     np.repeat(np.repeat(np.any(matching_criterion, axis=2)[:, :, np.newaxis], 4, axis=2)[:, :, :, np.newaxis],
+        #               self.__number_of_gaussians, axis=3), self.update_mean(matching_criterion), self.new_mean())
 
     def update_mean(self, matching_criterion):
         updated_mean = np.copy(self.__mean)
         yuv = np.repeat(np.any(self.__current_yuv, axis=2)[:, :, np.newaxis], self.__number_of_gaussians, axis=2)
         # depth = np.repeat(np.any(self.__current_depth, axis=1)[:, :, np.newaxis], self.__number_of_gaussians, axis=1)
         for i in range(3):
-            updated_mean[:, :, i] = np.where(matching_criterion, (1 - self.__learning_rate_alfa) * updated_mean[:, :, i] + self.__learning_rate_alfa * yuv, updated_mean[:, :, i])
+            updated_mean[:, :, i] = np.where(matching_criterion, (1 - self.__learning_rate_alfa) * updated_mean[:, :,
+                                                                                                   i] + self.__learning_rate_alfa * yuv,
+                                             updated_mean[:, :, i])
         updated_mean[:, :, 3] = np.where(matching_criterion, (1 - self.__learning_rate_alfa) * \
                                          updated_mean[:, :, 3] + self.__learning_rate_alfa * self.__current_depth,
                                          updated_mean[:, :, 3])
@@ -813,24 +813,23 @@ class Fast_RGBD_MoG:
 
     def get_matching_criterion(self):
         beta = self.__matching_rate_beta ** 2
-        matching_criterion = np.empty([self.__height, self.__width, self.__number_of_gaussians])
-        for i in range(self.__number_of_gaussians):
-            depth_matching_1 = (self.__current_depth - self.__mean[:, :, 3, i]) ** 2 < beta * self.__variance[:, :, 3,
-                                                                                              i]
-            depth_matching_2 = self.__current_depth == 255
-            depth_matching_3 = self.__depth_observations[:, :, 0, i] / self.__depth_observations[:, :, 1,
-                                                                       i] < self.__depth_reliability_ro
-            depth_matching = np.bitwise_or(depth_matching_1, np.bitwise_or(depth_matching_2, depth_matching_3))
+        matching_criterion = np.empty([self.__height * self.__width, self.__number_of_gaussians])
+        d_c_1 = (self.__current_depth[:, np.newaxis] - self.__mean[:, 3]) ** 2 < beta * self.__variance[:, 3]
+        d_c_2 = np.repeat([self.__current_depth == 255], self.__number_of_gaussians, axis=0).T
+        d_c_3 = self.__depth_observations[:, 0] / self.__depth_observations[:, 1] < self.__depth_reliability_ro
 
-            color_matching_1 = np.bitwise_and(self.__mean[:, :, 0, i] > self.__luminance_min,
-                                              self.__current_yuv[:, :, 0] > self.__luminance_min)
-            color_matching_2 = (self.__current_yuv[:, :, 0] - self.__mean[:, :, 0, i]) ** 2 < beta * self.__variance[:,
-                                                                                                     :, 0, i]
-            color_matching_3 = np.sum((self.__current_yuv[:, :, 1:] - self.__mean[:, :, 1:3, i]),
-                                      axis=2) ** 2 < beta * self.__variance[:, :, 1, i]
-            color_matching = np.where(color_matching_1, np.add(color_matching_2, color_matching_3), color_matching_2)
+        depth_matching = np.logical_or.reduce((d_c_1, d_c_2, d_c_3))
 
-            matching_criterion[:, :, i] = np.bitwise_and(depth_matching, color_matching)
+        c_c_1 = np.logical_and(self.__mean[:, 0] > self.__luminance_min,
+                               np.repeat([self.__current_yuv[:, 0] > self.__luminance_min], self.__number_of_gaussians,
+                                         axis=0).T)
+        c_c_2 = self.__current_yuv[:, 0, np.newaxis] - self.__mean[:, 0] ** 2 < beta * self.__variance[:, 0]
+        c_c_3 = np.sum(self.__current_yuv[:, 1:, np.newaxis] - self.__mean[:, 1:3],
+                       axis=1) ** 2 < beta * self.__variance[:, 1]
+
+        color_matching = np.where(c_c_1, np.add(c_c_2, c_c_3), c_c_2)
+
+        matching_criterion = np.bitwise_and(depth_matching, color_matching)
 
         return matching_criterion
 

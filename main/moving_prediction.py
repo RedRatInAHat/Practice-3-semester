@@ -10,13 +10,17 @@ from set_of_math_functions import *
 
 class MovementFunctions:
 
-    def __init__(self, functions, max_number_of_params, number_of_gaussians=None):
+    def __init__(self, functions, max_number_of_params, number_of_gaussians=None, coefficient_of_forgetting=1., t=0.,
+                 weight_threshold=0.1):
         if number_of_gaussians is None:
             number_of_gaussians = len(functions)
         self.functions_coefficients = np.zeros((number_of_gaussians, max_number_of_params))
         self.covariance_matrices = np.zeros((number_of_gaussians, max_number_of_params, max_number_of_params))
         self.standard_deviations = np.zeros((number_of_gaussians, max_number_of_params))
         self.weights = np.zeros(number_of_gaussians)
+        self.time_of_creation = np.full(number_of_gaussians, t)
+        self.coefficient_of_forgetting = coefficient_of_forgetting
+        self.weight_threshold = weight_threshold
         self.extract_parameters(functions)
 
     def extract_parameters(self, functions):
@@ -31,14 +35,23 @@ class MovementFunctions:
 
     def get_gaussians_parameters_at_time(self, moment):
         means, standard_deviations = self.get_solution(self.functions_coefficients, self.standard_deviations, moment)
-        return means, standard_deviations, self.weights
+        return self.values_selection(means, standard_deviations, moment)
 
     def get_velocity(self, moment):
         coefficients = np.arange(self.functions_coefficients.shape[1] - 1, 0, -1)
         velocity_coefficients = self.functions_coefficients[:, :-1] * coefficients[np.newaxis, :]
         velocity_sd = self.standard_deviations[:, :-1] * coefficients[np.newaxis, :]
         means, standard_deviations = self.get_solution(velocity_coefficients, velocity_sd, moment)
-        return means, standard_deviations, self.weights
+        return self.values_selection(means, standard_deviations, moment)
+
+    def values_selection(self, means, standard_deviations, moment):
+        time_difference = moment - self.time_of_creation
+        t_condition = time_difference >= 0
+        means, standard_deviations, weights, time_difference = means[t_condition], standard_deviations[t_condition], \
+                                                               self.weights[t_condition], time_difference[t_condition]
+        weights = weights / (1 + self.coefficient_of_forgetting * time_difference)
+        w_condition = weights >= self.weight_threshold
+        return means[w_condition], standard_deviations[w_condition], weights[w_condition] / np.sum(weights[w_condition])
 
     def get_solution(self, coefficients, sd, moment):
         means = np.polyval(coefficients.T, moment)
@@ -46,6 +59,23 @@ class MovementFunctions:
         max_deviation = np.abs(means - np.polyval(coefficients.T + sd.T, moment))
         standard_deviations = np.maximum(min_deviation, max_deviation)
         return means, standard_deviations
+
+    def update_gaussians(self, means, standard_deviations, weights, time):
+        new_means = np.zeros((means.shape[0], self.functions_coefficients.shape[1]))
+        new_covariance_matrices = np.zeros(
+            (means.shape[0], self.functions_coefficients.shape[1], self.functions_coefficients.shape[1]))
+        new_standard_deviations = np.zeros((means.shape[0], self.functions_coefficients.shape[1]))
+
+        new_means[:, -means.shape[1]:] = np.flip(means)
+        new_standard_deviations[:, -means.shape[1]:] = np.flip(standard_deviations)
+        row, col = np.diag_indices(new_standard_deviations.shape[1])
+        new_covariance_matrices[:, row, col] = new_standard_deviations
+
+        self.functions_coefficients = np.append(self.functions_coefficients, new_means, axis=0)
+        self.covariance_matrices = np.append(self.covariance_matrices, new_covariance_matrices, axis=0)
+        self.standard_deviations = np.append(self.standard_deviations, new_standard_deviations, axis=0)
+        self.weights = np.append(self.weights, weights, axis=0)
+        self.time_of_creation = np.append(self.time_of_creation, np.full(means.shape[0], time))
 
 
 class PointsVelocities():
@@ -60,14 +90,23 @@ class PointsVelocities():
         self.points_linear_angular_weight = np.empty(0)
         self.radii = np.empty((0, 3))
         self.radii_length = np.empty(0)
+        self.center = np.empty((0, 3))
+        self.angle = np.empty((0, 3))
+        self.center_sd = np.empty((0, 3))
+        self.angle_sd = np.empty((0, 3))
 
-    def add_points(self, center, linear_velocity, points_idx, radii, angular_velocities, linear_weight, angular_weight,
-                   linear_sd, angular_sd):
+    def add_points(self, center, center_sd, angle, angle_sd, linear_velocity, points_idx, radii, angular_velocities,
+                   linear_weight, angular_weight, linear_sd, angular_sd):
         all_points_idx = np.repeat(points_idx, angular_velocities.shape[0], axis=0)
         self.points_idx = np.append(self.points_idx, all_points_idx).astype(int)
         self.radii = np.append(self.radii, np.repeat(radii, angular_velocities.shape[0], axis=0), axis=0)
         self.radii_length = np.append(self.radii_length,
                                       np.linalg.norm(np.repeat(radii, angular_velocities.shape[0], axis=0), axis=1))
+
+        self.center = np.append(self.center, np.tile([center], (all_points_idx.shape[0], 1)), axis=0)
+        self.angle = np.append(self.angle, np.tile(angle, (points_idx.shape[0], 1)), axis=0)
+        self.center_sd = np.append(self.center_sd, np.tile([center_sd], (all_points_idx.shape[0], 1)), axis=0)
+        self.angle_sd = np.append(self.angle_sd, np.tile(angle_sd, (points_idx.shape[0], 1)), axis=0)
 
         self.points_linear_velocity = np.append(self.points_linear_velocity,
                                                 np.tile([linear_velocity], (all_points_idx.shape[0], 1)), axis=0)
@@ -82,7 +121,11 @@ class PointsVelocities():
         self.points_linear_angular_velocity = np.append(self.points_linear_angular_velocity, w_l_v, axis=0)
         self.points_linear_angular_sd = np.append(self.points_linear_angular_sd, w_l_s, axis=0)
         self.points_linear_angular_weight = np.append(self.points_linear_angular_weight,
-                                                      np.tile(angular_weight, (all_points_idx.shape[0], 1)))
+                                                      np.tile(angular_weight, points_idx.shape[0]))
+
+        # print(self.points_idx.shape, self.radii_length.shape, self.center_sd.shape, self.points_linear_velocity.shape,
+        #       self.points_linear_sd.shape, self.points_linear_weight.shape, self.points_linear_angular_velocity.shape,
+        #       self.points_linear_angular_sd.shape, self.points_linear_angular_weight.shape)
 
     def calculate_angular_to_linear_velocity(self, angular_velocity, angular_velocity_sd, radii):
         linear_velocity = np.cross(angular_velocity, radii)
@@ -94,6 +137,10 @@ class PointsVelocities():
 
     def repeat_n_times(self, n):
         self.points_idx = np.repeat(self.points_idx, n)
+        self.center = np.repeat(self.center, n, axis=0)
+        self.angle = np.repeat(self.angle, n, axis=0)
+        self.center_sd = np.repeat(self.center_sd, n, axis=0)
+        self.angle_sd = np.repeat(self.angle_sd, n, axis=0)
         self.points_linear_velocity = np.repeat(self.points_linear_velocity, n, axis=0)
         self.points_linear_sd = np.repeat(self.points_linear_sd, n, axis=0)
         self.points_linear_weight = np.repeat(self.points_linear_weight, n)
@@ -653,17 +700,35 @@ def get_centers(functions, moment):
 
 def get_unique_values_3(m, sd, w):
     df = pd.DataFrame(np.c_[m, sd, w], columns=['vx', 'vy', 'vz', 'sdx', 'sdy', 'sdz', 'w'])
-    mss = df.round(3).groupby(['vx', 'vy', 'vz']).max().reset_index().to_numpy()
-    msw = df.round(3).groupby(['vx', 'vy', 'vz']).sum().reset_index().to_numpy()
+    mss = df.round(5).groupby(['vx', 'vy', 'vz']).max().reset_index().to_numpy()
+    msw = df.round(5).groupby(['vx', 'vy', 'vz']).sum().reset_index().to_numpy()
     return msw[:, :3], mss[:, 3:6], msw[:, -1]
 
 
-def get_unique_values_6(m_p, m_v, sd_p, sd_v, w):
-    df = pd.DataFrame(np.c_[m_p, m_v, sd_p, sd_v, w],
-                      columns=['x', 'y', 'z', 'vx', 'vy', 'vz', 'sdx', 'sdy', 'sdz', 'sdvx', 'sdvy', 'sdvz', 'w'])
-    mss = df.groupby(['x', 'y', 'z', 'vx', 'vy', 'vz']).max().reset_index().to_numpy()
-    msw = df.groupby(['x', 'y', 'z', 'vx', 'vy', 'vz']).sum().reset_index().to_numpy()
-    return msw[:, :3], msw[:, 3:6], mss[:, 6:9], mss[:, 9:12], msw[:, -1]
+def get_unique_values_6(m_p, m_v, sd_p, sd_v, w, round_value=5):
+    m_p, m_v = np.round(m_p, round_value), np.round(m_v, round_value)
+    unique_values = np.unique(np.c_[m_p, m_v], axis=0)
+    means_p = np.zeros((unique_values.shape[0], 3))
+    means_v = np.zeros((unique_values.shape[0], 3))
+    standard_deviation_p = np.zeros((unique_values.shape[0], 3))
+    standard_deviation_v = np.zeros((unique_values.shape[0], 3))
+    weight = np.zeros(unique_values.shape[0])
+    for u, unique_value in enumerate(unique_values):
+        means_p[u] = unique_value[:3]
+        means_v[u] = unique_value[-3:]
+        idx_mask = (np.c_[m_p, m_v] == unique_value).all(axis=1)
+        standard_deviation_p[u] = np.max(sd_p[idx_mask], axis=0)
+        standard_deviation_v[u] = np.max(sd_v[idx_mask], axis=0)
+        weight[u] = np.sum(w[idx_mask])
+
+    return means_p, means_v, standard_deviation_p, standard_deviation_v, np.asarray(weight)
+
+    # df = pd.DataFrame(np.c_[m_p, m_v, sd_p, sd_v, w],
+    #                   columns=['x', 'y', 'z', 'vx', 'vy', 'vz', 'sdx', 'sdy', 'sdz', 'sdvx', 'sdvy', 'sdvz', 'w'])
+    # mss = df.round(5).groupby(['x', 'y', 'z', 'vx', 'vy', 'vz']).max().reset_index().to_numpy()
+    # msw = df.round(5).groupby(['x', 'y', 'z', 'vx', 'vy', 'vz']).sum().reset_index().to_numpy()
+    # print(msw[:, :3], msw[:, 3:6], mss[:, 6:9], mss[:, 9:12], msw[:, -1])
+    # return msw[:, :3], msw[:, 3:6], mss[:, 6:9], mss[:, 9:12], msw[:, -1]
 
 
 def find_points_in_radius(points, center, radius):
@@ -674,24 +739,21 @@ def find_points_in_radius(points, center, radius):
 
 def get_particles_velocities(points, linear_velocities_functions, angular_velocities_functions, moment, max_radius):
     c_means, c_standard_deviations, c_weights = get_centers(linear_velocities_functions, moment)
-    l_means, l_standard_deviations, l_weights = get_velocities(linear_velocities_functions, moment)
-    a_means, a_standard_deviations, a_weights = get_velocities(angular_velocities_functions, moment)
+    v_means, v_standard_deviations, v_weights = get_velocities(linear_velocities_functions, moment)
+    a_means, a_standard_deviations, a_weights = get_centers(angular_velocities_functions, moment)
+    w_means, w_standard_deviations, w_weights = get_velocities(angular_velocities_functions, moment)
 
-    # import time
-    # start = time.time()
-    a_means, a_standard_deviations, a_weights = get_unique_values_3(np.around(a_means), a_standard_deviations,
-                                                                    a_weights)
-    c_means, l_means, c_standard_deviations, l_standard_deviations, c_weights = get_unique_values_6(
-        np.around(c_means, 3), np.round(l_means, 3), c_standard_deviations, l_standard_deviations, c_weights)
-    # print(time.time() - start)
-    # potentially may reduce calculations, but for ~30 points it's too long
+    a_means, w_means, a_standard_deviations, w_standard_deviations, a_weights = get_unique_values_6(
+        a_means, w_means, a_standard_deviations, w_standard_deviations, a_weights)
+    c_means, v_means, c_standard_deviations, v_standard_deviations, c_weights = get_unique_values_6(
+        c_means, v_means, c_standard_deviations, v_standard_deviations, c_weights)
 
     pv = PointsVelocities()
 
     for c, center in enumerate(c_means):
         points_idx, radii = find_points_in_radius(points, center, max_radius + np.sum(c_standard_deviations[c] ** 2))
-        pv.add_points(center, l_means[c], points_idx, radii, a_means, l_weights[c], a_weights, l_standard_deviations[c],
-                      a_standard_deviations)
+        pv.add_points(center, c_standard_deviations[c], a_means, a_standard_deviations, v_means[c], points_idx, radii,
+                      w_means, c_weights[c], a_weights, v_standard_deviations[c], w_standard_deviations)
     return pv
 
 
@@ -850,14 +912,13 @@ def find_max_radius(points):
 
 
 def find_new_velocities(points_velocities, normals, point_probabilities):
-    print(np.sum(point_probabilities[points_velocities.points_idx] * points_velocities.points_linear_weight))
-    numer_of_intervals = 10
+    number_of_intervals = 10
     gamma_max = 1.0
     mu_max = 1.0
-    gamma = np.linspace(0.0, gamma_max, num=numer_of_intervals, endpoint=True)
-    gamma_probability = np.full(numer_of_intervals, gamma_max / numer_of_intervals)
-    mu = np.linspace(0.0, 1.0, num=numer_of_intervals, endpoint=True)
-    mu_probability = np.full(numer_of_intervals, mu_max / numer_of_intervals)
+    gamma = np.linspace(0.0, gamma_max, num=number_of_intervals, endpoint=True)
+    gamma_probability = np.full(number_of_intervals, gamma_max / number_of_intervals)
+    mu = np.linspace(0.0, 1.0, num=number_of_intervals, endpoint=True)
+    mu_probability = np.full(number_of_intervals, mu_max / number_of_intervals)
 
     mu_gamma = np.array(np.meshgrid(mu, gamma)).T.reshape(-1, 2)
     mu_gamma_probability = np.array(np.meshgrid(mu_probability, gamma_probability)).T.reshape(-1, 2)
@@ -935,7 +996,7 @@ def find_new_velocities(points_velocities, normals, point_probabilities):
     q_new_min = np.matmul(T_inv, q_min[:, :, np.newaxis]).reshape(-1, 3)
     xi = np.where(q_new_min[:, 0] > q_new_min[:, 2], np.ones(plane_y.shape[0]), -np.ones(plane_y.shape[0]))
     v_xyz_min, w_xyz_min = find_all_new_velocities(points_velocities, q_min, q_new_min, plane_x, plane_y, T_inv, T, xi,
-                                           mu=m_g[:, 0], gamma=m_g[:, 1])
+                                                   mu=m_g[:, 0], gamma=m_g[:, 1])
 
     q_max = np.zeros((plane_x.shape[0], 6))
     q_max[:, :3] = points_velocities.points_linear_velocity + points_velocities.points_linear_sd
@@ -943,13 +1004,22 @@ def find_new_velocities(points_velocities, normals, point_probabilities):
     q_new_max = np.matmul(T_inv, q_max[:, :, np.newaxis]).reshape(-1, 3)
     xi = np.where(q_new_max[:, 0] > q_new_max[:, 2], np.ones(plane_y.shape[0]), -np.ones(plane_y.shape[0]))
     v_xyz_max, w_xyz_max = find_all_new_velocities(points_velocities, q_max, q_new_max, plane_x, plane_y, T_inv, T, xi,
-                                           mu=m_g[:, 0], gamma=m_g[:, 1])
+                                                   mu=m_g[:, 0], gamma=m_g[:, 1])
 
     v_xyz_sd = np.maximum(np.abs(v_xyz - v_xyz_min), np.abs(v_xyz - v_xyz_max))
-
-    weights = point_probabilities[points_velocities.points_idx] * points_velocities.points_linear_weight *\
+    w_xyz_sd = np.maximum(np.abs(w_xyz - w_xyz_min), np.abs(w_xyz - w_xyz_max))
+    weights = point_probabilities[points_velocities.points_idx] * points_velocities.points_linear_weight * \
               points_velocities.points_linear_angular_weight * m_g_p[:, 0] * m_g_p[:, 1]
-    print("sum: ", np.sum(weights))
+    return v_xyz, w_xyz, v_xyz_sd, w_xyz_sd, weights, points_velocities
+    # df = pd.DataFrame(np.c_[points_velocities.points_idx, point_probabilities[points_velocities.points_idx],
+    #                         points_velocities.points_linear_weight, points_velocities.points_linear_angular_weight,
+    #                         m_g_p[:, 0], m_g_p[:, 1]],
+    #                   columns=['idx', 'point prob', 'velocity weight', 'angular velocity weight', 'mu weight',
+    #                            'gamma weight'])
+    # pd.set_option('display.max_rows', 500)
+    # pd.set_option('display.max_columns', 500)
+    # pd.set_option('display.width', 1000)
+    # print(df.groupby(['idx']).min().reset_index())
 
 
 def find_all_new_velocities(points_velocities, q, q_new, plane_x, plane_y, T_inv, T, xi, gamma=0.5, alpha=1., mu=0.5):
@@ -992,3 +1062,68 @@ def long_dot(a, b, shape):
     for i, _ in enumerate(a):
         result[i] = np.dot(a[i], b[i])
     return result
+
+
+def update_gaussians(v_xyz, w_xyz, v_xyz_sd, w_xyz_sd, weights, points_velocities, linear_functions, angular_functions,
+                     moment):
+    unique_centers = np.unique(points_velocities.center, axis=0)
+    unique_angles = np.unique(points_velocities.angle, axis=0)
+
+    l_velocity = np.zeros((unique_centers.shape[0], 3, 3))
+    a_velocity = np.zeros((unique_angles.shape[0], 3, 2))
+    l_sd = np.zeros((unique_centers.shape[0], 3, 3))
+    a_sd = np.zeros((unique_angles.shape[0], 3, 2))
+    l_weight = np.zeros(unique_centers.shape[0])
+    a_weight = np.zeros(unique_angles.shape[0])
+
+    for c, center in enumerate(unique_centers):
+        center_idx = (points_velocities.center == center).all(axis=1)
+
+        number_of_points = np.unique(points_velocities.points_idx[center_idx]).shape[0]
+
+        x_v, y_v, z_v = v_xyz[center_idx, 0], v_xyz[center_idx, 1], v_xyz[center_idx, 2]
+        x_v_sd, y_v_sd, z_v_sd = v_xyz_sd[center_idx, 0], v_xyz_sd[center_idx, 1], v_xyz_sd[center_idx, 2]
+        w = points_velocities.points_linear_weight[center_idx]
+
+        center_sd = points_velocities.center_sd[center_idx]
+        weight = weights[center_idx]
+
+        velocity_means = np.asarray(
+            [np.sum(x_v * weight), np.sum(y_v * weight), np.sum(z_v * weight)]) / number_of_points
+
+        l_velocity[c] = np.asarray([[center[0], velocity_means[0], 0],
+                                    [center[1], velocity_means[1], -9.8],
+                                    [center[2], velocity_means[2], 0]])
+        l_sd[c] = np.asarray([[np.max(center_sd[:, 0]), np.max(x_v_sd), 0],
+                              [np.max(center_sd[:, 1]), np.max(y_v_sd), 0],
+                              [np.max(center_sd[:, 2]), np.max(z_v_sd), 0]])
+        l_weight[c] = np.max(w)
+
+    for a, angle in enumerate(unique_angles):
+        angle_idx = (points_velocities.angle == angle).all(axis=1)
+        number_of_points = np.unique(points_velocities.points_idx[angle_idx]).shape[0]
+
+        x_w, y_w, z_w = w_xyz[angle_idx, 0], w_xyz[angle_idx, 1], w_xyz[angle_idx, 2]
+        x_w_sd, y_w_sd, z_w_sd = w_xyz_sd[angle_idx, 0], w_xyz_sd[angle_idx, 1], w_xyz_sd[angle_idx, 2]
+        w = points_velocities.points_linear_weight[angle_idx]
+
+        angle_sd = points_velocities.angle_sd[angle_idx]
+        weight = weights[angle_idx]
+
+        velocity_means = np.asarray(
+            [np.sum(x_w * weight), np.sum(y_w * weight), np.sum(z_w * weight)]) / number_of_points
+
+        a_velocity[a] = np.asarray([[angle[0], velocity_means[0]],
+                                    [angle[1], velocity_means[1]],
+                                    [angle[2], velocity_means[2]]])
+        a_sd[a] = np.asarray([[np.max(angle_sd[:, 0]), np.max(x_w_sd)],
+                              [np.max(angle_sd[:, 1]), np.max(y_w_sd)],
+                              [np.max(angle_sd[:, 2]), np.max(z_w_sd)]])
+        a_weight[a] = np.max(w)
+
+    linear_functions[0].update_gaussians(l_velocity[:, 0], l_sd[:, 0], l_weight, moment)
+    linear_functions[1].update_gaussians(l_velocity[:, 1], l_sd[:, 1], l_weight, moment)
+    linear_functions[2].update_gaussians(l_velocity[:, 2], l_sd[:, 2], l_weight, moment)
+    angular_functions[0].update_gaussians(a_velocity[:, 0], a_sd[:, 0], a_weight, moment)
+    angular_functions[1].update_gaussians(a_velocity[:, 1], a_sd[:, 1], a_weight, moment)
+    angular_functions[2].update_gaussians(a_velocity[:, 2], a_sd[:, 2], a_weight, moment)
