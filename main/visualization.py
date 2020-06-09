@@ -2,6 +2,7 @@ import open3d
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import pyplot as plt
+import cv2
 
 import moving_prediction
 from moving_prediction import get_future_points
@@ -146,3 +147,8 @@ def show_points_with_obstacles(function, tt, obstacles_level):
     for func, y_ in zip(function, trajectory):
         plt.plot(tt, y_, '--')
     plt.show()
+
+def show_image(image):
+    cv2.imshow("", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()

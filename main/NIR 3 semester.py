@@ -141,7 +141,7 @@ def try_fast_RGBD_MoG():
         rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i) + ".png")
         depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i) + ".png", "depth")
         start = time.time()
-        mask = mog.set_mask(rgb_im, depth_im)
+        mask = mog.get_mask(rgb_im, depth_im)
         print("frame updating: ", time.time() - start)
     #     show_image(mask/255)
     #     # image_processing.save_image(mask / 255, "Results/RGBD MoG", i, "mask")

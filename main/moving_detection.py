@@ -569,8 +569,6 @@ class RGBD_MoG:
         depth_pixel = self.__current_depth[gauss.index[0], gauss.index[1]]
         beta = self.__matching_rate_beta ** 2
 
-        print(depth_pixel, gauss.depth_mean, gauss.depth_variance)
-
         depth_matching = np.bitwise_or((depth_pixel - gauss.depth_mean) ** 2 < beta * gauss.depth_variance,
                                        np.bitwise_or(depth_pixel == 255,
                                                      gauss.depth_observations[:, 0] / gauss.depth_observations[:,
@@ -646,10 +644,11 @@ class RGBD_MoG:
             #     depth_reliability = np.ones(self.__number_of_gaussians)
             #     break
             if gauss.depth_observations[index, 0] / gauss.depth_observations[index, 1] > \
-                    self.__depth_reliability_ro or gauss.weight[index] > self.__depth_threshold < 255:
+                    self.__depth_reliability_ro and gauss.weight[index] > self.__depth_threshold < 255:
                 if gauss.depth_mean[index] >= max_depth:
                     depth_reliability[index] = 1
                     max_depth = gauss.depth_mean[index]
+
         depth_reliability = depth_reliability.astype(int)
 
         threshold = 0
@@ -690,7 +689,8 @@ class RGBD_MoG:
 class Fast_RGBD_MoG:
 
     def __init__(self, rgb_im, depth_im, number_of_gaussians=3, learning_rate_alfa=.025, depth_reliability_ro=0.2,
-                 matching_rate_beta=2.5, luminance_min=16, depth_threshold=0.01, reliability_threshold=.4):
+                 matching_rate_beta=2.5, luminance_min=16, depth_threshold=0.01, reliability_threshold=.4,
+                 default_variance=1.):
         self.__number_of_gaussians = number_of_gaussians
         self.__learning_rate_alfa = learning_rate_alfa
         self.__depth_reliability_ro = depth_reliability_ro
@@ -698,6 +698,7 @@ class Fast_RGBD_MoG:
         self.__luminance_min = luminance_min
         self.__depth_threshold = depth_threshold
         self.__reliability_threshold = reliability_threshold
+        self.__default_variance = default_variance
 
         self.__height = rgb_im.shape[0]
         self.__width = rgb_im.shape[1]
@@ -708,7 +709,7 @@ class Fast_RGBD_MoG:
         self.__mask = np.zeros_like(depth_im)
 
         self.__mean = np.zeros([self.__height * self.__width, 4, number_of_gaussians])
-        self.__variance = np.ones([self.__height * self.__width, 4, number_of_gaussians])
+        self.__variance = np.ones([self.__height * self.__width, 4, number_of_gaussians]) * self.__default_variance
         self.__weight = np.ones_like(self.__mean) / number_of_gaussians
         self.__depth_observations = np.ones([self.__height * self.__width, 2, number_of_gaussians])
         self.initialization()
@@ -727,7 +728,7 @@ class Fast_RGBD_MoG:
         # self.__mean[rank[:, 0], rank[:, 1], rank[:, 2]] = 1.
         return rank
 
-    def set_mask(self, rgb_im, depth_im):
+    def get_mask(self, rgb_im, depth_im):
         self.__current_yuv = RGB_to_YUV(rgb_im).reshape(-1, 3)
         self.__current_depth = depth_im.flatten()
 
@@ -737,79 +738,83 @@ class Fast_RGBD_MoG:
         # matching criterion
         matching_criterion = self.get_matching_criterion()
 
-        # # update
+        # update
+        self.update(matching_criterion, ranking)
+
+        # get_mask
+        mask = self.set_mask(matching_criterion)
+
+        return mask
         # self.__mean = np.where(
         #     np.repeat(np.repeat(np.any(matching_criterion, axis=2)[:, :, np.newaxis], 4, axis=2)[:, :, :, np.newaxis],
         #               self.__number_of_gaussians, axis=3), self.update_mean(matching_criterion), self.new_mean())
 
-    def update_mean(self, matching_criterion):
-        updated_mean = np.copy(self.__mean)
-        yuv = np.repeat(np.any(self.__current_yuv, axis=2)[:, :, np.newaxis], self.__number_of_gaussians, axis=2)
-        # depth = np.repeat(np.any(self.__current_depth, axis=1)[:, :, np.newaxis], self.__number_of_gaussians, axis=1)
-        for i in range(3):
-            updated_mean[:, :, i] = np.where(matching_criterion, (1 - self.__learning_rate_alfa) * updated_mean[:, :,
-                                                                                                   i] + self.__learning_rate_alfa * yuv,
-                                             updated_mean[:, :, i])
-        updated_mean[:, :, 3] = np.where(matching_criterion, (1 - self.__learning_rate_alfa) * \
-                                         updated_mean[:, :, 3] + self.__learning_rate_alfa * self.__current_depth,
-                                         updated_mean[:, :, 3])
-        return np.zeros_like(self.__mean)
+    def update(self, matching_criterion, ranking):
+        self.__mean = np.where(np.bitwise_or.reduce(matching_criterion, axis=1)[:, np.newaxis, np.newaxis],
+                               self.update_mean(matching_criterion), self.new_mean(ranking))
+        self.__variance = np.where(np.bitwise_or.reduce(matching_criterion, axis=1)[:, np.newaxis, np.newaxis],
+                                   self.update_variance(matching_criterion), self.new_variance(ranking))
+        self.__weight = np.where(np.bitwise_or.reduce(matching_criterion, axis=1)[:, np.newaxis, np.newaxis],
+                                 self.update_weight(matching_criterion), self.new_weight(ranking))
+        self.__depth_observations = np.where(
+            np.bitwise_or.reduce(matching_criterion, axis=1)[:, np.newaxis, np.newaxis],
+            self.update_depth_observations(matching_criterion), self.new_depth_observations(ranking))
 
-    def new_mean(self):
-        new_mean = np.copy(self.__mean)
-        new_mean[:, :, :3, -1] = self.__current_yuv
-        new_mean[:, :, 3, -1] = self.__current_depth
+    def update_mean(self, matching_criterion):
+        alpha = self.__learning_rate_alfa
+        new_data = np.c_[self.__current_yuv, self.__current_depth]
+
+        new_mean = np.where(matching_criterion[:, np.newaxis],
+                            (1 - alpha) * self.__mean + alpha * new_data[:, :, np.newaxis], self.__mean)
         return new_mean
 
-    def update(self, gauss, matching_criterion, number_of_observations):
-        yuv_pixel = self.__current_yuv[gauss.index[0], gauss.index[1]]
-        depth_pixel = self.__current_depth[gauss.index[0], gauss.index[1]]
+    def new_mean(self, r):
+        new_mean = np.copy(self.__mean)
+        new_mean[r[:, 0], r[:, 1], r[:, 2]] = np.c_[self.__current_yuv, self.__current_depth].flatten()
+        return new_mean
 
-        if np.bitwise_or.reduce(matching_criterion):
+    def update_variance(self, matching_criterion):
+        alpha = self.__learning_rate_alfa
+        new_data = np.c_[self.__current_yuv, self.__current_depth]
 
-            gauss.luminance_variance = np.where(matching_criterion, (
-                    1 - self.__learning_rate_alfa) * gauss.luminance_variance + self.__learning_rate_alfa * (
-                                                        yuv_pixel[0] - gauss.luminance_mean) ** 2,
-                                                gauss.luminance_variance)
+        new_variance = np.where(matching_criterion[:, np.newaxis],
+                                (1 - alpha) * self.__variance + alpha * (new_data[:, :, np.newaxis] - self.__mean) ** 2,
+                                self.__variance)
+        return new_variance
 
-            gauss.luminance_mean = np.where(matching_criterion,
-                                            (1 - self.__learning_rate_alfa) * gauss.luminance_mean +
-                                            self.__learning_rate_alfa * yuv_pixel[0], gauss.luminance_mean)
+    def new_variance(self, r):
+        new_variance = np.copy(self.__variance)
+        new_variance[r[:, 0], r[:, 1], r[:, 2]] = self.__default_variance
+        return new_variance
 
-            for i in range(self.__number_of_gaussians):
-                if matching_criterion[i]:
-                    gauss.color_variance[i] = (1 - self.__learning_rate_alfa) * gauss.color_variance[
-                        i] + self.__learning_rate_alfa * np.sum((yuv_pixel[1:] - gauss.color_mean[i]) ** 2)
-                    gauss.color_mean[i] = (1 - self.__learning_rate_alfa) * gauss.color_mean[
-                        i] + self.__learning_rate_alfa * yuv_pixel[1:]
-                    gauss.depth_observations[i] = [(1 - self.__learning_rate_alfa) * gauss.depth_observations[i, 0] +
-                                                   self.__learning_rate_alfa * (depth_pixel < 255),
-                                                   number_of_observations]
+    def update_weight(self, matching_criterion):
+        alpha = self.__learning_rate_alfa
 
-            gauss.depth_variance = np.where(matching_criterion, (
-                    1 - self.__learning_rate_alfa) * gauss.depth_variance + self.__learning_rate_alfa * (
-                                                    depth_pixel - gauss.depth_mean) ** 2, gauss.depth_variance)
-            gauss.depth_mean = np.where(matching_criterion,
-                                        (1 - self.__learning_rate_alfa) * gauss.depth_mean +
-                                        self.__learning_rate_alfa * depth_pixel, gauss.depth_mean)
+        new_weight = np.where(matching_criterion[:, np.newaxis],
+                              (1 - alpha) * self.__weight + alpha, self.__weight)
+        return new_weight
 
-            gauss.weight = np.where(matching_criterion, (
-                    1 - self.__learning_rate_alfa) * gauss.weight + self.__learning_rate_alfa * matching_criterion,
-                                    gauss.weight)
-        else:
-            index = gauss.ranking[-1]
+    def new_weight(self, r):
+        new_weight = np.copy(self.__weight)
+        new_weight[r[:, 0], r[:, 1], r[:, 2]] = self.__learning_rate_alfa
+        return new_weight
 
-            gauss.luminance_mean[index] = yuv_pixel[0]
-            gauss.color_mean[index] = yuv_pixel[1:]
-            gauss.depth_mean[index] = depth_pixel
+    def update_depth_observations(self, matching_criterion):
+        new_depth_observations = np.copy(self.__depth_observations)
 
-            gauss.luminance_variance[index] = 1
-            gauss.color_variance[index] = 1
-            gauss.depth_variance[index] = 1
+        new_depth_observations[:, 0, :] = (1 - self.__learning_rate_alfa) * self.__depth_observations[:, 0, :] + \
+                                          (self.__learning_rate_alfa * (self.__current_depth < 255)).reshape(-1, 1)
+        new_depth_observations[:, 1, :] = self.__depth_observations[:, 1, :] + 1
+        return new_depth_observations
 
-            gauss.weight[index] = self.__learning_rate_alfa
-
-            gauss.depth_observations[index] = [self.__learning_rate_alfa * (depth_pixel < 255), number_of_observations]
+    def new_depth_observations(self, r):
+        new_depth_observations = np.copy(self.__depth_observations)
+        new_r = np.unique((np.c_[r[:, 0], r[:, 2]]).astype(int), axis=0)
+        idx = np.arange(0, r.shape[0], 4)
+        new_r = np.c_[r[idx, 0], r[idx, 1]]
+        new_depth_observations[new_r[:, 0], 0, new_r[:, 1]] = self.__learning_rate_alfa * (self.__current_depth < 255)
+        new_depth_observations[new_r[:, 0], 1, new_r[:, 1]] = self.__depth_observations[new_r[:, 0], 1, new_r[:, 1]] + 1
+        return new_depth_observations
 
     def get_matching_criterion(self):
         beta = self.__matching_rate_beta ** 2
@@ -832,6 +837,49 @@ class Fast_RGBD_MoG:
         matching_criterion = np.bitwise_and(depth_matching, color_matching)
 
         return matching_criterion
+
+    def set_mask(self, matching_criterion):
+        mask = np.ones_like(self.__current_depth)
+
+        condition_1 = self.__depth_observations[:, 0] / self.__depth_observations[:, 1] > self.__depth_reliability_ro
+        condition_2 = np.bitwise_and(self.__weight[:, 3] > self.__depth_threshold, self.__mean[:, 3] < 255.)
+        condition = np.bitwise_and(condition_1, condition_2)
+
+        temp_depth = np.copy(self.__mean[:, 3])
+        temp_depth[~condition] = 0.
+
+        max_temp_depth = np.max(temp_depth, axis=1)
+        max_condition = np.equal(temp_depth, max_temp_depth[:, np.newaxis])
+
+        depth_reliability = np.where(np.bitwise_and(condition, max_condition), True, False)
+
+        temp_weights = np.copy(self.__weight[:, 0])
+        weights_sum = np.zeros(temp_weights.shape[0])
+
+        for g in range(self.__number_of_gaussians):
+            temp_temp_weights = np.copy(temp_weights)
+            temp_temp_weights[np.arange(temp_weights.shape[0]), temp_weights.argmax(1)] = np.where(
+                weights_sum <= self.__reliability_threshold, -1,
+                temp_temp_weights[np.arange(temp_weights.shape[0]), temp_weights.argmax(1)])
+            weights_sum = np.where(weights_sum <= self.__reliability_threshold,
+                                   weights_sum + np.amax(temp_weights, axis=1),
+                                   weights_sum)
+            temp_weights = np.copy(temp_temp_weights)
+            if (weights_sum > self.__reliability_threshold).all():
+                break
+
+        color_reliability = np.where(temp_weights == -1, True, False)
+
+        pixel_reliability = np.bitwise_and(self.__current_depth == 255,
+                                           self.__current_yuv[:, 0] <= self.__luminance_min)
+
+        final_condition_1 = np.bitwise_or.reduce(np.bitwise_and(matching_criterion, color_reliability), axis = 1)
+        final_condition_2 = np.bitwise_or.reduce(np.bitwise_and(matching_criterion, depth_reliability), axis = 1)
+        background = np.bitwise_or(final_condition_1, final_condition_2)
+        mask = np.where(background, 0, 255)
+
+        mask = mask.reshape(self.__height, self.__width).astype(int)
+        return mask
 
 
 def color_distance(current_pixel, sample_pixel):

@@ -36,13 +36,13 @@ def check_moving_detection():
     start = time.time()
     mog = moving_detection.Fast_RGBD_MoG(rgb_im, depth_im, number_of_gaussians=5)
     print("initialization: ", time.time() - start)
-    for i in range(1):
+    for i in range(4):
         rgb_im = image_processing.load_image("falling balls and cylinder", "rgb_" + str(i+1) + ".png")
         depth_im = image_processing.load_image("falling balls and cylinder", "depth_" + str(i+1) + ".png", "depth")
         start = time.time()
-        mog.set_mask(rgb_im, depth_im)
+        mask = mog.get_mask(rgb_im, depth_im)
         print("frame updating: ", time.time() - start)
-    #     show_image(mask/255)
+        visualization.show_image(mask/255)
 
 
 def check_RANSAC():
@@ -362,14 +362,27 @@ def check_physical_objects_interaction_to_moment():
     points_velocities = moving_prediction.get_particles_velocities(interactive_points[points_idx], center_f, angles_f,
                                                                    observation_moment, max_radius + d_x / 2)
 
-    new_v, new_w, new_v_sd, new_w_sd, new_weight, points_velocities = \
+    print(points_velocities.angle_sd.shape)
+
+    new_v, new_w, new_v_sd, new_w_sd, new_weight, _, slip_or_not = \
         moving_prediction.find_new_velocities(points_velocities, environment_normals[env_idx],
                                               interactive_probability[points_idx])
 
+    print(points_velocities.angle_sd.shape)
+
     moving_prediction.update_gaussians(new_v, new_w, new_v_sd, new_w_sd, new_weight, points_velocities, center_f,
-                                       angles_f, observation_moment)
+                                       angles_f, observation_moment, slip_or_not)
     print(time.time() - start)
 
+    import matplotlib.pyplot as plt
+
+    for c in center_f:
+        number_of_gaussians = c.get_number_of_gaussians()
+        t = np.arange(0, 3, 0.1)
+        for n in range(number_of_gaussians):
+            means, time_row = c.get_gaussian_presentation(n, t)
+            plt.plot(time_row, means, '--')
+        plt.show()
     # visualization
 
     # potential trajectories of object
@@ -477,12 +490,12 @@ def check_function_calculation():
 
 if __name__ == "__main__":
     start = time.time()
-    check_moving_detection()
+    # check_moving_detection()
     # check_RANSAC()
     # check_probabilistic_prediction()
     # check_physical_objects_interaction_at_moment()
     # check_normals_estimation()
-    # check_physical_objects_interaction_to_moment()
+    check_physical_objects_interaction_to_moment()
     # moving_prediction.i_have_a_theory()
     # check_data_generation()
     print(time.time() - start)

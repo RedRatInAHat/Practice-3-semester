@@ -20,6 +20,7 @@ class MovementFunctions:
         self.weights = np.zeros(number_of_gaussians)
         self.time_of_creation = np.full(number_of_gaussians, t)
         self.coefficient_of_forgetting = coefficient_of_forgetting
+        self.forgetting = np.zeros(number_of_gaussians)
         self.weight_threshold = weight_threshold
         self.extract_parameters(functions)
 
@@ -46,10 +47,9 @@ class MovementFunctions:
 
     def values_selection(self, means, standard_deviations, moment):
         time_difference = moment - self.time_of_creation
-        t_condition = time_difference >= 0
-        means, standard_deviations, weights, time_difference = means[t_condition], standard_deviations[t_condition], \
-                                                               self.weights[t_condition], time_difference[t_condition]
-        weights = weights / (1 + self.coefficient_of_forgetting * time_difference)
+        weights = np.copy(self.weights)
+        weights[time_difference < 0] = 0
+        weights = weights / (1 + self.coefficient_of_forgetting * self.forgetting)
         w_condition = weights >= self.weight_threshold
         return means[w_condition], standard_deviations[w_condition], weights[w_condition] / np.sum(weights[w_condition])
 
@@ -76,7 +76,16 @@ class MovementFunctions:
         self.standard_deviations = np.append(self.standard_deviations, new_standard_deviations, axis=0)
         self.weights = np.append(self.weights, weights, axis=0)
         self.time_of_creation = np.append(self.time_of_creation, np.full(means.shape[0], time))
+        self.forgetting += np.max(weights)
+        self.forgetting = np.append(self.forgetting, np.zeros(means.shape[0]))
 
+    def get_number_of_gaussians(self):
+        return self.functions_coefficients.shape[0]
+
+    def get_gaussian_presentation(self, number_of_gaussian, time_row):
+        exact_time_row = time_row[time_row >= self.time_of_creation[number_of_gaussian]]
+        means = np.polyval(self.functions_coefficients[number_of_gaussian], exact_time_row)
+        return means, exact_time_row
 
 class PointsVelocities():
 
@@ -987,30 +996,33 @@ def find_new_velocities(points_velocities, normals, point_probabilities):
     q_new = np.matmul(T_inv, q[:, :, np.newaxis]).reshape(-1, 3)
 
     xi = np.where(q_new[:, 0] > q_new[:, 2], np.ones(plane_y.shape[0]), -np.ones(plane_y.shape[0]))
-    v_xyz, w_xyz = find_all_new_velocities(points_velocities, q, q_new, plane_x, plane_y, T_inv, T, xi, mu=m_g[:, 0],
-                                           gamma=m_g[:, 1])
+    v_xyz, w_xyz, slip_or_not = find_all_new_velocities(points_velocities, q, q_new, plane_x, plane_y, T_inv, T, xi,
+                                                        mu=m_g[:, 0],
+                                                        gamma=m_g[:, 1])
 
     q_min = np.zeros((plane_x.shape[0], 6))
     q_min[:, :3] = points_velocities.points_linear_velocity - points_velocities.points_linear_sd
     q_min[:, -3:] = points_velocities.points_linear_angular_velocity - points_velocities.points_linear_angular_sd
     q_new_min = np.matmul(T_inv, q_min[:, :, np.newaxis]).reshape(-1, 3)
     xi = np.where(q_new_min[:, 0] > q_new_min[:, 2], np.ones(plane_y.shape[0]), -np.ones(plane_y.shape[0]))
-    v_xyz_min, w_xyz_min = find_all_new_velocities(points_velocities, q_min, q_new_min, plane_x, plane_y, T_inv, T, xi,
-                                                   mu=m_g[:, 0], gamma=m_g[:, 1])
+    v_xyz_min, w_xyz_min, _ = find_all_new_velocities(points_velocities, q_min, q_new_min, plane_x, plane_y, T_inv, T,
+                                                      xi,
+                                                      mu=m_g[:, 0], gamma=m_g[:, 1])
 
     q_max = np.zeros((plane_x.shape[0], 6))
     q_max[:, :3] = points_velocities.points_linear_velocity + points_velocities.points_linear_sd
     q_max[:, -3:] = points_velocities.points_linear_angular_velocity + points_velocities.points_linear_angular_sd
     q_new_max = np.matmul(T_inv, q_max[:, :, np.newaxis]).reshape(-1, 3)
     xi = np.where(q_new_max[:, 0] > q_new_max[:, 2], np.ones(plane_y.shape[0]), -np.ones(plane_y.shape[0]))
-    v_xyz_max, w_xyz_max = find_all_new_velocities(points_velocities, q_max, q_new_max, plane_x, plane_y, T_inv, T, xi,
-                                                   mu=m_g[:, 0], gamma=m_g[:, 1])
+    v_xyz_max, w_xyz_max, _ = find_all_new_velocities(points_velocities, q_max, q_new_max, plane_x, plane_y, T_inv, T,
+                                                      xi,
+                                                      mu=m_g[:, 0], gamma=m_g[:, 1])
 
     v_xyz_sd = np.maximum(np.abs(v_xyz - v_xyz_min), np.abs(v_xyz - v_xyz_max))
     w_xyz_sd = np.maximum(np.abs(w_xyz - w_xyz_min), np.abs(w_xyz - w_xyz_max))
     weights = point_probabilities[points_velocities.points_idx] * points_velocities.points_linear_weight * \
               points_velocities.points_linear_angular_weight * m_g_p[:, 0] * m_g_p[:, 1]
-    return v_xyz, w_xyz, v_xyz_sd, w_xyz_sd, weights, points_velocities
+    return v_xyz, w_xyz, v_xyz_sd, w_xyz_sd, weights, points_velocities, slip_or_not
     # df = pd.DataFrame(np.c_[points_velocities.points_idx, point_probabilities[points_velocities.points_idx],
     #                         points_velocities.points_linear_weight, points_velocities.points_linear_angular_weight,
     #                         m_g_p[:, 0], m_g_p[:, 1]],
@@ -1028,12 +1040,14 @@ def find_all_new_velocities(points_velocities, q, q_new, plane_x, plane_y, T_inv
     P = np.where((mu <= mu_e)[:, np.newaxis, np.newaxis], slip_p(xi, mu, gamma, alpha, points_velocities.radii_length),
                  no_slip_p(gamma, alpha, points_velocities.radii_length))
 
+    slip_or_not = mu <= mu_e
+
     q = np.matmul(np.matmul(np.matmul(T, P), T_inv), q[:, :, np.newaxis]).reshape(-1, 6)
 
     xyz_v = q[:, :3]
     w = np.cross(points_velocities.radii, q[:, -3:]) / np.linalg.norm(points_velocities.radii)
 
-    return xyz_v, w
+    return xyz_v, w, slip_or_not
 
 
 def slip_p(xi, mu, gamma, alpha, r):
@@ -1065,61 +1079,77 @@ def long_dot(a, b, shape):
 
 
 def update_gaussians(v_xyz, w_xyz, v_xyz_sd, w_xyz_sd, weights, points_velocities, linear_functions, angular_functions,
-                     moment):
+                     moment, slip_or_not):
     unique_centers = np.unique(points_velocities.center, axis=0)
     unique_angles = np.unique(points_velocities.angle, axis=0)
 
-    l_velocity = np.zeros((unique_centers.shape[0], 3, 3))
-    a_velocity = np.zeros((unique_angles.shape[0], 3, 2))
-    l_sd = np.zeros((unique_centers.shape[0], 3, 3))
-    a_sd = np.zeros((unique_angles.shape[0], 3, 2))
-    l_weight = np.zeros(unique_centers.shape[0])
-    a_weight = np.zeros(unique_angles.shape[0])
+    l_velocity = np.zeros((unique_centers.shape[0] * 2, 3, 3))
+    a_velocity = np.zeros((unique_angles.shape[0] * 2, 3, 3))
+    l_sd = np.zeros((unique_centers.shape[0] * 2, 3, 3))
+    a_sd = np.zeros((unique_angles.shape[0] * 2, 3, 3))
+    l_weight = np.zeros(unique_centers.shape[0] * 2)
+    a_weight = np.zeros(unique_angles.shape[0] * 2)
 
     for c, center in enumerate(unique_centers):
         center_idx = (points_velocities.center == center).all(axis=1)
 
-        number_of_points = np.unique(points_velocities.points_idx[center_idx]).shape[0]
+        # slip part
+        this_slip = slip_or_not[center_idx]
 
-        x_v, y_v, z_v = v_xyz[center_idx, 0], v_xyz[center_idx, 1], v_xyz[center_idx, 2]
-        x_v_sd, y_v_sd, z_v_sd = v_xyz_sd[center_idx, 0], v_xyz_sd[center_idx, 1], v_xyz_sd[center_idx, 2]
-        w = points_velocities.points_linear_weight[center_idx]
+        w = points_velocities.points_linear_weight[center_idx][this_slip]
 
-        center_sd = points_velocities.center_sd[center_idx]
-        weight = weights[center_idx]
+        center_sd = points_velocities.center_sd[center_idx][this_slip]
 
-        velocity_means = np.asarray(
-            [np.sum(x_v * weight), np.sum(y_v * weight), np.sum(z_v * weight)]) / number_of_points
+        l_velocity[c * 2], l_sd[c * 2], l_weight[c * 2] = create_mean_std_weight(v_xyz, v_xyz_sd, weights, center,
+                                                                                 center_sd, w, center_idx, this_slip)
 
-        l_velocity[c] = np.asarray([[center[0], velocity_means[0], 0],
-                                    [center[1], velocity_means[1], -9.8],
-                                    [center[2], velocity_means[2], 0]])
-        l_sd[c] = np.asarray([[np.max(center_sd[:, 0]), np.max(x_v_sd), 0],
-                              [np.max(center_sd[:, 1]), np.max(y_v_sd), 0],
-                              [np.max(center_sd[:, 2]), np.max(z_v_sd), 0]])
-        l_weight[c] = np.max(w)
+        # no slip part
+
+        this_not_slip = np.logical_not(this_slip)
+
+        if np.sum(this_not_slip) == 0:
+            l_velocity[c * 2 + 1], l_sd[c * 2 + 1], l_weight[c * 2 + 1] = l_velocity[c * 2], l_sd[c * 2], l_weight[
+                c * 2]
+        else:
+            w = points_velocities.points_linear_weight[center_idx][this_not_slip]
+
+            center_sd = points_velocities.center_sd[center_idx][this_not_slip]
+
+            l_velocity[c * 2 + 1], l_sd[c * 2 + 1], l_weight[c * 2 + 1] = \
+                create_mean_std_weight(v_xyz, v_xyz_sd, weights, center, center_sd, w, center_idx, this_not_slip)
+        if np.sum(this_slip) == 0:
+            l_velocity[c * 2], l_sd[c * 2], l_weight[c * 2] = l_velocity[c * 2 + 1], l_sd[c * 2 + 1], l_weight[
+                c * 2 + 1]
 
     for a, angle in enumerate(unique_angles):
         angle_idx = (points_velocities.angle == angle).all(axis=1)
-        number_of_points = np.unique(points_velocities.points_idx[angle_idx]).shape[0]
 
-        x_w, y_w, z_w = w_xyz[angle_idx, 0], w_xyz[angle_idx, 1], w_xyz[angle_idx, 2]
-        x_w_sd, y_w_sd, z_w_sd = w_xyz_sd[angle_idx, 0], w_xyz_sd[angle_idx, 1], w_xyz_sd[angle_idx, 2]
-        w = points_velocities.points_linear_weight[angle_idx]
+        # slip part
+        this_slip = slip_or_not[angle_idx]
 
-        angle_sd = points_velocities.angle_sd[angle_idx]
-        weight = weights[angle_idx]
+        w = points_velocities.points_linear_angular_weight[angle_idx][this_slip]
 
-        velocity_means = np.asarray(
-            [np.sum(x_w * weight), np.sum(y_w * weight), np.sum(z_w * weight)]) / number_of_points
+        angle_sd = points_velocities.angle_sd[angle_idx][this_slip]
 
-        a_velocity[a] = np.asarray([[angle[0], velocity_means[0]],
-                                    [angle[1], velocity_means[1]],
-                                    [angle[2], velocity_means[2]]])
-        a_sd[a] = np.asarray([[np.max(angle_sd[:, 0]), np.max(x_w_sd)],
-                              [np.max(angle_sd[:, 1]), np.max(y_w_sd)],
-                              [np.max(angle_sd[:, 2]), np.max(z_w_sd)]])
-        a_weight[a] = np.max(w)
+        a_velocity[a * 2], a_sd[a * 2], a_weight[a * 2] = create_mean_std_weight(w_xyz, w_xyz_sd, weights, angle,
+                                                                                 angle_sd, w, angle_idx, this_slip)
+        # no slip part
+
+        this_not_slip = np.logical_not(this_slip)
+
+        if np.sum(this_not_slip) == 0:
+            a_velocity[a * 2 + 1], a_sd[a * 2 + 1], a_weight[a * 2 + 1] = a_velocity[a * 2], a_sd[a * 2], a_weight[
+                a * 2]
+        else:
+            w = points_velocities.points_linear_angular_weight[angle_idx][this_not_slip]
+
+            angle_sd = points_velocities.center_sd[angle_idx][this_not_slip]
+
+            a_velocity[a * 2 + 1], a_sd[a * 2 + 1], a_weight[a * 2 + 1] = \
+                create_mean_std_weight(w_xyz, w_xyz_sd, weights, angle, angle_sd, w, angle_idx, this_not_slip)
+        if np.sum(this_slip) == 0:
+            a_velocity[a * 2], a_sd[a * 2], a_weight[a * 2] = a_velocity[a * 2 + 1], a_sd[a * 2 + 1], a_weight[
+                a * 2 + 1]
 
     linear_functions[0].update_gaussians(l_velocity[:, 0], l_sd[:, 0], l_weight, moment)
     linear_functions[1].update_gaussians(l_velocity[:, 1], l_sd[:, 1], l_weight, moment)
@@ -1127,3 +1157,24 @@ def update_gaussians(v_xyz, w_xyz, v_xyz_sd, w_xyz_sd, weights, points_velocitie
     angular_functions[0].update_gaussians(a_velocity[:, 0], a_sd[:, 0], a_weight, moment)
     angular_functions[1].update_gaussians(a_velocity[:, 1], a_sd[:, 1], a_weight, moment)
     angular_functions[2].update_gaussians(a_velocity[:, 2], a_sd[:, 2], a_weight, moment)
+
+
+def create_mean_std_weight(means, sd_s, weights, value, value_sd, w, value_idx, slip_idx):
+    x_v, y_v, z_v = means[value_idx, 0][slip_idx], means[value_idx, 1][slip_idx], means[value_idx, 2][slip_idx]
+    x_v_sd, y_v_sd, z_v_sd = sd_s[value_idx, 0][slip_idx], sd_s[value_idx, 1][slip_idx], sd_s[value_idx, 2][slip_idx]
+
+    weight = weights[value_idx][slip_idx]
+
+    weighed_velocities = np.asarray([x_v * weight, y_v * weight, z_v * weight])
+
+    velocity_means = np.mean(weighed_velocities, axis=1)
+    velocity_std = np.std(weighed_velocities, axis=1)
+
+    new_velocity = np.asarray([[value[0], velocity_means[0], 0],
+                               [value[1], velocity_means[1], -9.8],
+                               [value[2], velocity_means[2], 0]])
+    new_sd = np.asarray([[np.max(value_sd[:, 0]), velocity_std[0] + np.max(x_v_sd), 0],
+                         [np.max(value_sd[:, 1]), velocity_std[1] + np.max(y_v_sd), 0],
+                         [np.max(value_sd[:, 2]), velocity_std[2] + np.max(z_v_sd), 0]])
+    new_weight = np.max(w)
+    return new_velocity, new_sd, new_weight
